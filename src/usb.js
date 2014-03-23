@@ -84,7 +84,7 @@ llSCL3711.prototype.readLoop = function() {
         if (x.data.byteLength >= 5) {
 
           var u8 = new Uint8Array(x.data);
-          console.log(UTIL_fmt('<' + UTIL_BytesToHex(u8)));
+          console.log(UTIL_fmt('<<< USB <<< ' + UTIL_BytesToHex(u8)));
 
           self.publishFrame(x.data);
 
@@ -139,7 +139,7 @@ llSCL3711.prototype.writePump = function() {
   };
 
   var u8 = new Uint8Array(frame);
-  console.log(UTIL_fmt('>' + UTIL_BytesToHex(u8)));
+  console.log(UTIL_fmt('>>> USB >>> ' + UTIL_BytesToHex(u8)));
 
   chrome.usb.bulkTransfer(
       this.dev,

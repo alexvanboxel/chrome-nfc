@@ -291,6 +291,14 @@ usbSCL3711.prototype.exchange = function(data, timeout, cb) {
   this.read(timeout, cb);
 };
 
+// TODO: CCID, temp method to make the new ADPU functions work with the pump
+usbSCL3711.prototype.ccid_exchange = function (data, timeout, cb) {
+  data.debug();
+  this.write(this.ccid_makeFrame_arc122(data));
+  this.read(timeout, cb);
+};
+
+
 // TODO: move to ACR122-specific file
 usbSCL3711.prototype.acr122_reset_to_good_state = function(cb) {
   var self = this;
@@ -510,6 +518,42 @@ usbSCL3711.prototype.close = function() {
   deselect_release(dev_manager_close);
 };
 
+// TODO: CCID will move it device specific class
+usbSCL3711.prototype.ccid_makeFrame_arc122 = function (command) {
+  var payload = command.make();
+
+  var p8 = new Uint8Array(payload.length);
+
+  // header
+  var apdu_len = 5 /* pseudo header */ + payload.length;
+  var c8 = new Uint8Array(10);             // CCID header
+  c8[0] = 0x6b;                            //   PC_to_RDR_Escape
+  c8[1] = (apdu_len >> 0) & 0xff;          //   LEN (little-endian)
+  c8[2] = (apdu_len >> 8) & 0xff;          //
+  c8[3] = (apdu_len >> 16) & 0xff;         //
+  c8[4] = (apdu_len >> 24) & 0xff;         //
+  c8[5] = 0x00;                            //   bSlot
+  c8[6] = 0x00;                            //   bSeq
+  c8[7] = 0x00;                            //   abRFU
+  c8[8] = 0x00;                            //   abRFU
+  c8[9] = 0x00;                            //   abRFU
+
+  var a8 = new Uint8Array(5);              // Pseudo-APDU
+  a8[0] = 0xFF;                            //   Class
+  a8[1] = 0x00;                            //   INS (fixed 0)
+  a8[2] = 0x00;                            //   P1 (fixed 0)
+  a8[3] = 0x00;                            //   P2 (fixed 0)
+  a8[4] = payload.length;                   //   Lc (Number of Bytes to send)
+
+  var header = UTIL_concat(c8, a8);
+
+  var chksum = new Uint8Array([]);
+
+  return UTIL_concat(UTIL_concat(header, payload), chksum).buffer;
+};
+
+
+
 
 /*
  *  Help to build the USB packet:
@@ -607,7 +651,8 @@ usbSCL3711.prototype.wait_for_passive_target = function(timeout, cb) {
 
   if (self.dev.acr122) {
     self.acr122_set_timeout(timeout, function(rc, data) {
-      InListPassiveTarget(timeout, cb);
+      var adpu = new ADPU.InListPassiveTarget();
+      self.ccid_exchange(adpu,timeout,cb);
     });
   } else {
     InListPassiveTarget(timeout, cb);

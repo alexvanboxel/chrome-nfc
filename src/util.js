@@ -43,6 +43,7 @@ function UTIL_BytesToHex(b) {
 }
 
 function UTIL_BytesToHexWithSeparator(b, sep) {
+  if (!b) return '(null)';
   var hexchars = '0123456789ABCDEF';
   var stride = 2 + (sep?1:0);
   var hexrep = new Array(b.length * stride);
