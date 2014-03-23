@@ -126,16 +126,16 @@ usbSCL3711.prototype.read = function(timeout, cb) {
   var self = this;
 
   // Schedule call to cb if not called yet.
-  function schedule_cb(a, b, c) {
+  function schedule_cb(a, b) {
     if (tid) {
       // Cancel timeout timer.
       window.clearTimeout(tid);
       tid = null;
     }
-    var C = callback;
-    if (C) {
+    var c = callback;
+    if (c) {
       callback = null;
-      window.setTimeout(function() { C(a, b, c); }, 0);
+      window.setTimeout(function() { c(a, b); }, 0);
     }
   };
 
@@ -146,6 +146,8 @@ usbSCL3711.prototype.read = function(timeout, cb) {
         '[' + self.cid.toString(16) + '] timeout!'));
 
     tid = null;
+
+    schedule_cb(-5 /* ERR_MSG_TIMEOUT */);
   };
 
   function read_frame() {
@@ -242,35 +244,23 @@ usbSCL3711.prototype.read = function(timeout, cb) {
                  f[6] == 0x4b /* InListPassiveTarget reply */) {
         if (f[7] == 0x01 /* tag number */ &&
             f[8] == 0x01 /* Tg */) {
-
-          /* TODO:
-           * Take [SENS_REQ(ATQA), SEL_RES(SAK), tag_id] to ask database.
-           * The database would return the corresponding TAG object.
-           */
-
-          console.log("DEBUG: InListPassiveTarget SENS_REQ(ATQA)=0x" +
+          console.log("DEBUG: InListPassiveTarget SENS_REQ=0x" +
                       (f[9] * 256 + f[10]).toString(16) +
-                      ", SEL_RES(SAK)=0x" + f[11].toString(16));
-          var NFCIDLength = f[12];
-          var tag_id = new Uint8Array(f.subarray(13, 13 + NFCIDLength)).buffer;
-          console.log("DEBUG: tag_id: " +
-              UTIL_BytesToHex(new Uint8Array(tag_id)));
-
+                      ", SEL_RES=0x" + f[11].toString(16));
           if (f[9] == 0x00 && f[10] == 0x44 /* SENS_RES */) {
-            /* FIXME: not actually Ultralight. Only when tag_id[0]==0x04 */
             console.log("DEBUG: found Mifare Ultralight (106k type A)");
             self.detected_tag = "Mifare Ultralight";
             self.authed_sector = null;
             self.auth_key = null;
-            schedule_cb(0, "tt2", tag_id);
+            schedule_cb(0, "tt2" /* new Uint8Array(f.subarray(11, f.length)).buffer */);
             return;
           } else if (f[9] == 0x00 && f[10] == 0x04 /* SENS_RES */) {
-            /* FIXME: not actually Classic. Only when tag_id[0]==0x04 */
             console.log("DEBUG: found Mifare Classic 1K (106k type A)");
             self.detected_tag = "Mifare Classic 1K";
             self.authed_sector = null;
             self.auth_key = null;
-            schedule_cb(0, "mifare_classic", tag_id);
+            schedule_cb(0, "mifare_classic" /* new Uint8Array(f.subarray(11, f.length)).buffer */);
+            //schedule_cb(0, new Uint8Array(f.subarray(18, f.length - 2)).buffer);
             return;
           }
         } else {
@@ -301,6 +291,13 @@ usbSCL3711.prototype.exchange = function(data, timeout, cb) {
   this.read(timeout, cb);
 };
 
+// TODO: CCID, temp method to make the new ADPU functions work with the pump
+usbSCL3711.prototype.ccid_exchange = function (data, timeout, cb) {
+  data.debug();
+  this.write(this.ccid_makeFrame_arc122(data));
+  this.read(timeout, cb);
+};
+
 
 // TODO: move to ACR122-specific file
 usbSCL3711.prototype.acr122_reset_to_good_state = function(cb) {
@@ -309,18 +306,12 @@ usbSCL3711.prototype.acr122_reset_to_good_state = function(cb) {
 
   self.exchange(new Uint8Array([
     0x00, 0x00, 0xff, 0x00, 0xff, 0x00]).buffer, 1, function(rc, data) {
-      if (rc) {
-        console.warn("[FIXME] acr122_reset_to_good_state: rc = " + rc);
-      }
       // icc_power_on
       self.exchange(new Uint8Array([
         0x62, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00]).buffer,
         10, function(rc, data) {
-          if (rc) {
-            console.warn("[FIXME] icc_power_on: rc = " + rc);
-          }
           console.log("[DEBUG] icc_power_on: turn on the device power");
-          if (callback) window.setTimeout(function() { callback(0); }, 100);
+          if (callback) window.setTimeout(function() { callback(); }, 100);
       });
   });
 }
@@ -490,16 +481,8 @@ usbSCL3711.prototype.open = function(which, cb, onclose) {
 
     /* extra configuration for ACR122 */
     if (self.dev && self.dev.acr122) {
-      self.acr122_reset_to_good_state(function(rc) {
-        if (rc) {
-          console.error("[ERROR] acr122_reset_to_good_state() returns " + rc);
-          return callback ? callback(rc) : null;
-        }
-        self.acr122_set_buzzer(false, function(rc) {
-          if (rc) {
-            console.error("[ERROR] acr122_reset_to_good_state() returns " + rc);
-            return callback ? callback(rc) : null;
-          }
+      self.acr122_reset_to_good_state(function() {
+        self.acr122_set_buzzer(false, function() {
           if (callback) callback(result);
         });
       });
@@ -534,6 +517,42 @@ usbSCL3711.prototype.close = function() {
 
   deselect_release(dev_manager_close);
 };
+
+// TODO: CCID will move it device specific class
+usbSCL3711.prototype.ccid_makeFrame_arc122 = function (command) {
+  var payload = command.make();
+
+  var p8 = new Uint8Array(payload.length);
+
+  // header
+  var apdu_len = 5 /* pseudo header */ + payload.length;
+  var c8 = new Uint8Array(10);             // CCID header
+  c8[0] = 0x6b;                            //   PC_to_RDR_Escape
+  c8[1] = (apdu_len >> 0) & 0xff;          //   LEN (little-endian)
+  c8[2] = (apdu_len >> 8) & 0xff;          //
+  c8[3] = (apdu_len >> 16) & 0xff;         //
+  c8[4] = (apdu_len >> 24) & 0xff;         //
+  c8[5] = 0x00;                            //   bSlot
+  c8[6] = 0x00;                            //   bSeq
+  c8[7] = 0x00;                            //   abRFU
+  c8[8] = 0x00;                            //   abRFU
+  c8[9] = 0x00;                            //   abRFU
+
+  var a8 = new Uint8Array(5);              // Pseudo-APDU
+  a8[0] = 0xFF;                            //   Class
+  a8[1] = 0x00;                            //   INS (fixed 0)
+  a8[2] = 0x00;                            //   P1 (fixed 0)
+  a8[3] = 0x00;                            //   P2 (fixed 0)
+  a8[4] = payload.length;                   //   Lc (Number of Bytes to send)
+
+  var header = UTIL_concat(c8, a8);
+
+  var chksum = new Uint8Array([]);
+
+  return UTIL_concat(UTIL_concat(header, payload), chksum).buffer;
+};
+
+
 
 
 /*
@@ -632,7 +651,8 @@ usbSCL3711.prototype.wait_for_passive_target = function(timeout, cb) {
 
   if (self.dev.acr122) {
     self.acr122_set_timeout(timeout, function(rc, data) {
-      InListPassiveTarget(timeout, cb);
+      var adpu = new ADPU.InListPassiveTarget();
+      self.ccid_exchange(adpu,timeout,cb);
     });
   } else {
     InListPassiveTarget(timeout, cb);
