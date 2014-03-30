@@ -302,171 +302,6 @@ usbSCL3711.prototype.ccid_exchange = function (data, timeout, cb) {
 };
 
 
-// TODO: move to ACR122-specific file
-usbSCL3711.prototype.acr122_reset_to_good_state = function(cb) {
-  var self = this;
-  var callback = cb;
-
-  self.exchange(new Uint8Array([
-    0x00, 0x00, 0xff, 0x00, 0xff, 0x00]).buffer, 1, function(rc, data) {
-      // icc_power_on
-      self.exchange(new Uint8Array([
-        0x62, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00]).buffer,
-        10, function(rc, data) {
-          console.log("[DEBUG] icc_power_on: turn on the device power");
-          if (callback) window.setTimeout(function() { callback(); }, 100);
-      });
-  });
-}
-
-// set the beep on/off
-usbSCL3711.prototype.acr122_set_buzzer = function(enable, cb) {
-  var self = this;
-  var callback = cb;
-  var buzz = (enable) ? 0xff : 0x00;
-
-  self.exchange(new Uint8Array([
-    0x6b, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0xff, 0x00, 0x52, buzz, 0x00]).buffer, 1.0, function(rc, data) {
-      if (callback) callback(rc, data);
-  });
-}
-
-usbSCL3711.prototype.acr122_load_authentication_keys = function(key, loc, cb) {
-  var self = this;
-  var callback = cb;
-
-  if (key == null) key = self.KEYS[0];
-  else if (typeof key != "object") key = self.KEYS[key];
-
-  var u8 = new Uint8Array([
-    0x6b, 0x0b, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0xff, 0x82,  /* INS: Load Authentication Keys */
-          0x00,  /* P1: Key Structure: volatile memory */
-          loc,   /* P2: Key Number (key location): 0 or 1 */
-          0x06]);/* Lc: 6 bytes */
-  u8 = UTIL_concat(u8, key);
-
-  self.exchange(u8.buffer, 1.0, function(rc, data) {
-      console.log("[DEBUG] acr122_load_authentication_keys(loc: " + loc +
-                  ", key: " + UTIL_BytesToHex(key) + ") = " + rc);
-      if (callback) callback(rc, data);
-  });
-}
-
-/* the 'block' is in 16-bytes unit. */
-usbSCL3711.prototype.acr122_authentication = function(block, loc, type, cb) {
-  var self = this;
-  var callback = cb;
-
-  self.exchange(new Uint8Array([
-    0x6b, 0x0a, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0xff, 0x86,  /* INS: Authentication */
-          0x00,  /* P1: */
-          0x00,  /* P2: */
-          0x05,  /* Lc: 5 bytes (Authentication Data Bytes) */
-          0x01,  /* Version */
-          0x00,  /* 0x00 */
-          block, /* Block number */
-          type,  /* Key type: TYPE A (0x60) or TYPE B (0x61) */ 
-          loc    /* Key number (key location): 0 or 1 */
-          ]).buffer, 1.0, function(rc, data) {
-    console.log("[DEBUG] acr122_authentication(loc: " + loc +
-                ", type: " + type + ", block: " + block + ") = " + rc);
-    if (callback) callback(rc, data);
-  });
-};
-
-/* For Mifare Classic only. The 'block' is in 16-bytes unit. */
-usbSCL3711.prototype.publicAuthentication = function(block, cb) {
-  var self = this;
-  var callback = cb;
-  var sector = Math.floor(block / 4);
-
-  function try_keyA(k) {
-    var ki = k;  // for closure
-    if (ki >= 3) {  // failed authentication
-      if (callback) callback(0xfff);
-      return;
-    }
-    self.acr122_load_authentication_keys(ki, 0, function(rc, data) {
-      if (rc) return;
-      self.acr122_authentication(block, 0, 0x60/*KEY A*/, function(rc, data) {
-        if (rc) return try_keyA(ki + 1);
-        self.authed_sector = sector;
-        self.auth_key = self.KEYS[ki];
-
-        // try_keyB(): always the default key
-        self.acr122_load_authentication_keys(self.KEYS[0], 1,
-          function(rc, data) {
-          self.acr122_authentication(block, 1, 0x61/*KEY B*/,
-            function(rc, data) {
-            if (callback) callback(rc, data);
-          });
-        });
-      });
-    });
-  }
-
-  if (self.detected_tag == "Mifare Classic 1K") {
-    if (self.dev && self.dev.acr122) {
-      if (self.authed_sector != sector) {
-        console.log("[DEBUG] Public Authenticate sector " + sector);
-        try_keyA(0);
-      } else {
-        if (callback) callback(0, null);
-      }
-    } else {
-      if (callback) callback(0, null);
-    }
-  } else {
-    if (callback) callback(0, null);
-  }
-};
-
-/* For Mifare Classic only. The 'block' is in 16-bytes unit. */
-usbSCL3711.prototype.privateAuthentication = function(block, key, cb) {
-  var self = this;
-  var callback = cb;
-  var sector = Math.floor(block / 4);
-
-  if (self.detected_tag == "Mifare Classic 1K") {
-    if (self.dev && self.dev.acr122) {
-      if (self.authed_sector != sector) {
-        console.log("[DEBUG] Private Authenticate sector " + sector);
-        self.acr122_load_authentication_keys(key, 1,
-            function(rc, data) {
-          self.acr122_authentication(block, 1, 0x61/*KEY B*/,
-              function(rc, data) {
-            if (rc) { console.log("KEY B AUTH ERROR"); return rc; }
-            if (callback) callback(rc, data);
-          });
-        });
-      } else {
-        if (callback) callback(0, null);
-      }
-    } else {
-      if (callback) callback(0, null);
-    }
-  } else {
-    if (callback) callback(0, null);
-  }
-};
-
-usbSCL3711.prototype.acr122_set_timeout = function(timeout /* secs */, cb) {
-  var self = this;
-  var callback = cb;
-
-  var unit = Math.ceil(timeout / 5);
-  if (unit >= 0xff) unit = 0xff;
-  console.log("[DEBUG] acr122_set_timeout(round up to " + unit * 5 + " secs)");
-
-  self.exchange(new Uint8Array([
-    0x6b, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0xff, 0x00, 0x41, unit, 0x00]).buffer, 1.0, function(rc, data) {
-      if (callback) callback(rc, data);
-  });
-}
 
 // onclose callback gets called when device disappears.
 usbSCL3711.prototype.open = function(which, cb, onclose) {
@@ -486,8 +321,8 @@ usbSCL3711.prototype.open = function(which, cb, onclose) {
     if (self.dev && self.dev.acr122) {
       self.nfcreader = new ACR122(self.dev);
 
-      self.acr122_reset_to_good_state(function() {
-        self.acr122_set_buzzer(false, function() {
+      self.nfcreader.acr122_reset_to_good_state(self,function() {
+        self.nfcreader.acr122_set_buzzer(self,false, function() {
           if (callback) callback(result);
         });
       });
@@ -611,7 +446,7 @@ usbSCL3711.prototype.wait_for_passive_target = function(timeout, cb) {
   if (!cb) cb = defaultCallback;
 
   if (self.dev.acr122) {
-    self.acr122_set_timeout(timeout, function(rc, data) {
+    self.nfcreader.acr122_set_timeout(self,timeout, function(rc, data) {
       var adpu = new ADPU.InListPassiveTarget();
       self.ccid_exchange(adpu,timeout,cb);
     });
@@ -711,7 +546,7 @@ usbSCL3711.prototype.emulate_tag = function(data, timeout, cb) {
           0xff, 0x00, 0x00, 0x00, 0x04, 0xd4, 0x32, 0x01, 0x00]).buffer, 1,
           function(rc, data) {
             if (rc != 0) { callback(rc); return; }
-            self.acr122_set_timeout(timeout, function(rc, data) {
+            self.nfcreader.acr122_set_timeout(self,timeout, function(rc, data) {
               if (rc != 0) { callback(rc); return; }
               TgInitAsTarget();
             });
