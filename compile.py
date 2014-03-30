@@ -29,6 +29,9 @@ def print_errors(errors, js_files):
 JS_FILES = [
   'src/b64.js',
   'src/adpu/adpu.js',
+  'src/ccid.js',
+  'src/devices/acr122.js',
+  'src/devices/scl3711.js',
   'src/mifare-classic.js',
   'src/ndef.js',
   'src/nfc.js',

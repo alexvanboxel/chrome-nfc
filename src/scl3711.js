@@ -39,6 +39,9 @@ function usbSCL3711() {
     new Uint8Array([0xa0, 0xa1, 0xa2, 0xa3, 0xa4, 0xa5])   // MAD
   ];
 
+  // TODO: CCID
+  this.nfcreader = null;
+
   this.strerror = function(errno) {
     var err = {
       0x01: "time out, the target has not answered",
@@ -294,7 +297,7 @@ usbSCL3711.prototype.exchange = function(data, timeout, cb) {
 // TODO: CCID, temp method to make the new ADPU functions work with the pump
 usbSCL3711.prototype.ccid_exchange = function (data, timeout, cb) {
   data.debug();
-  this.write(this.ccid_makeFrame_arc122(data));
+  this.nfcreader.command(data,cb);
   this.read(timeout, cb);
 };
 
@@ -481,12 +484,16 @@ usbSCL3711.prototype.open = function(which, cb, onclose) {
 
     /* extra configuration for ACR122 */
     if (self.dev && self.dev.acr122) {
+      self.nfcreader = new ACR122(self.dev);
+
       self.acr122_reset_to_good_state(function() {
         self.acr122_set_buzzer(false, function() {
           if (callback) callback(result);
         });
       });
     } else {
+      self.nfcreader = new SCL3711(self.dev);
+
       if (callback) callback(result);
     }
   });
@@ -497,11 +504,9 @@ usbSCL3711.prototype.close = function() {
 
   /* deselect and release target if any tag is associated. */
   function deselect_release(cb) {
-    self.exchange(self.makeFrame(0x44/* InDeselect */,
-                  new Uint8Array([0x01/*Tg*/])), 1.0 /* timeout */,
+    self.ccid_exchange(new ADPU.InDeselect(), 1.0 /* timeout */,
       function(rc, data) {
-        self.exchange(self.makeFrame(0x52/* InRelease */,
-                      new Uint8Array([0x01/*Tg*/])), 1.0 /* timeout */,
+        self.ccid_exchange(new ADPU.InRelease(), 1.0 /* timeout */,
           function(rc, data) {
           });
       });
@@ -517,43 +522,6 @@ usbSCL3711.prototype.close = function() {
 
   deselect_release(dev_manager_close);
 };
-
-// TODO: CCID will move it device specific class
-usbSCL3711.prototype.ccid_makeFrame_arc122 = function (command) {
-  var payload = command.make();
-
-  var p8 = new Uint8Array(payload.length);
-
-  // header
-  var apdu_len = 5 /* pseudo header */ + payload.length;
-  var c8 = new Uint8Array(10);             // CCID header
-  c8[0] = 0x6b;                            //   PC_to_RDR_Escape
-  c8[1] = (apdu_len >> 0) & 0xff;          //   LEN (little-endian)
-  c8[2] = (apdu_len >> 8) & 0xff;          //
-  c8[3] = (apdu_len >> 16) & 0xff;         //
-  c8[4] = (apdu_len >> 24) & 0xff;         //
-  c8[5] = 0x00;                            //   bSlot
-  c8[6] = 0x00;                            //   bSeq
-  c8[7] = 0x00;                            //   abRFU
-  c8[8] = 0x00;                            //   abRFU
-  c8[9] = 0x00;                            //   abRFU
-
-  var a8 = new Uint8Array(5);              // Pseudo-APDU
-  a8[0] = 0xFF;                            //   Class
-  a8[1] = 0x00;                            //   INS (fixed 0)
-  a8[2] = 0x00;                            //   P1 (fixed 0)
-  a8[3] = 0x00;                            //   P2 (fixed 0)
-  a8[4] = payload.length;                   //   Lc (Number of Bytes to send)
-
-  var header = UTIL_concat(c8, a8);
-
-  var chksum = new Uint8Array([]);
-
-  return UTIL_concat(UTIL_concat(header, payload), chksum).buffer;
-};
-
-
-
 
 /*
  *  Help to build the USB packet:
@@ -642,20 +610,14 @@ usbSCL3711.prototype.wait_for_passive_target = function(timeout, cb) {
 
   if (!cb) cb = defaultCallback;
 
-  function InListPassiveTarget(timeout, cb) {
-    self.detected_tag = null;
-    // Command 0x4a InListPassiveTarget, 0x01/*MaxTg*/, 0x00 (106 kpbs type).
-    self.exchange(self.makeFrame(0x4a, new Uint8Array([0x01, 0x00])),
-                  timeout, cb);
-  }
-
   if (self.dev.acr122) {
     self.acr122_set_timeout(timeout, function(rc, data) {
       var adpu = new ADPU.InListPassiveTarget();
       self.ccid_exchange(adpu,timeout,cb);
     });
   } else {
-    InListPassiveTarget(timeout, cb);
+    var adpu = new ADPU.InListPassiveTarget();
+    self.ccid_exchange(adpu,timeout,cb);
   }
 };
 
