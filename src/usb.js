@@ -73,7 +73,7 @@ llSCL3711.prototype.publishFrame = function(f) {
 llSCL3711.prototype.readLoop = function() {
   if (!this.dev) return;
 
-  // console.log(UTIL_fmt('entering readLoop ' + this.dev.handle));
+  console.log(UTIL_fmt('Entering readLoop'));
 
   var self = this;
   chrome.usb.bulkTransfer(

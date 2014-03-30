@@ -43,9 +43,28 @@ function CCID(dev) {
 //    this.usb.read(1000, callback);
   };
 
-  this.PC_to_RDR_IccPowerOn = function (payload) {
-    this.response = RDR_to_PC_DataBlock();
-    return [];
+  this.PC_to_RDR_IccPowerOn = function () {
+    // header
+
+    var c8 = new Uint8Array(10);             // CCID header
+    c8[0] = 0x62;                            //   PC_to_RDR_Escape
+    c8[1] = 0x00;                            //   LEN (little-endian)
+    c8[2] = 0x00;                            //
+    c8[3] = 0x00;                            //
+    c8[4] = 0x00;                            //
+    c8[5] = 0x00;                            //   bSlot
+    c8[6] = 0x00;                            //   bSeq
+    c8[7] = 0x01;                            //   abRFU
+    c8[8] = 0x00;                            //   abRFU
+    c8[9] = 0x00;                            //   abRFU
+
+    console.log(UTIL_fmt(">>> CCID >>> PC_to_RDR_IccPowerOn | 62 | LEN = 00 00 00 00 | INS = 00 | bSlot = 00 | bSeq = 00 | abRFU = 01 00 00"));
+    var buffer = c8.buffer;
+    this.usb.writeFrame(buffer);
+//    this.usb.read(1000, callback);
+
+//    this.response = RDR_to_PC_DataBlock();
+//    return [];
   };
 
   this.PC_to_RDR_IccPowerff = function (payload) {

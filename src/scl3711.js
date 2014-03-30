@@ -42,7 +42,7 @@ function usbSCL3711() {
   // TODO: CCID
   this.nfcreader = null;
 
-  this.strerror = function(errno) {
+  this. strerror = function(errno) {
     var err = {
       0x01: "time out, the target has not answered",
       0x02: "checksum error during rf communication",
@@ -294,6 +294,11 @@ usbSCL3711.prototype.exchange = function(data, timeout, cb) {
   this.read(timeout, cb);
 };
 
+// TEMP: replacement for exhange (only reads)
+usbSCL3711.prototype.ccid_read = function(timeout, cb) {
+  this.read(timeout, cb);
+};
+
 // TODO: CCID, temp method to make the new ADPU functions work with the pump
 usbSCL3711.prototype.ccid_exchange = function (data, timeout, cb) {
   data.debug();
@@ -301,6 +306,12 @@ usbSCL3711.prototype.ccid_exchange = function (data, timeout, cb) {
   this.read(timeout, cb);
 };
 
+
+// PASS-THRUE
+usbSCL3711.prototype.publicAuthentication = function(block, cb) {
+  var self = this;
+    self.nfcreader.publicAuthentication(self,block,cb);
+}
 
 
 // onclose callback gets called when device disappears.
