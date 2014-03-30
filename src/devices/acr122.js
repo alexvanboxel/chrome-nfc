@@ -25,3 +25,175 @@ function ACR122(dev) {
 
 
 }
+
+// JUST MOVED, need more refactoring
+ACR122.prototype.acr122_reset_to_good_state = function(rwloop,cb) {
+  var self = this;
+  var callback = cb;
+
+  rwloop.exchange(new Uint8Array([
+    0x00, 0x00, 0xff, 0x00, 0xff, 0x00]).buffer, 1, function(rc, data) {
+    // icc_power_on
+    rwloop.exchange(new Uint8Array([
+        0x62, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00]).buffer,
+      10, function(rc, data) {
+        console.log("[DEBUG] icc_power_on: turn on the device power");
+        if (callback) window.setTimeout(function() { callback(); }, 100);
+      });
+  });
+}
+
+// JUST MOVED, need more refactoring
+// set the beep on/off
+ACR122.prototype.acr122_set_buzzer = function(rwloop,enable, cb) {
+  var self = this;
+  var callback = cb;
+  var buzz = (enable) ? 0xff : 0x00;
+
+  rwloop.exchange(new Uint8Array([
+    0x6b, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0xff, 0x00, 0x52, buzz, 0x00]).buffer, 1.0, function(rc, data) {
+    if (callback) callback(rc, data);
+  });
+}
+
+// JUST MOVED, need more refactoring
+ACR122.prototype.acr122_load_authentication_keys = function(rwloop,key, loc, cb) {
+  var self = this;
+  var callback = cb;
+
+  if (key == null) key = self.KEYS[0];
+  else if (typeof key != "object") key = self.KEYS[key];
+
+  var u8 = new Uint8Array([
+    0x6b, 0x0b, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0xff, 0x82,  /* INS: Load Authentication Keys */
+    0x00,  /* P1: Key Structure: volatile memory */
+    loc,   /* P2: Key Number (key location): 0 or 1 */
+    0x06]);/* Lc: 6 bytes */
+  u8 = UTIL_concat(u8, key);
+
+  rwloop.exchange(u8.buffer, 1.0, function(rc, data) {
+    console.log("[DEBUG] acr122_load_authentication_keys(loc: " + loc +
+      ", key: " + UTIL_BytesToHex(key) + ") = " + rc);
+    if (callback) callback(rc, data);
+  });
+}
+
+// JUST MOVED, need more refactoring
+/* the 'block' is in 16-bytes unit. */
+ACR122.prototype.acr122_authentication = function(rwloop,block, loc, type, cb) {
+  var self = this;
+  var callback = cb;
+
+  rwloop.exchange(new Uint8Array([
+    0x6b, 0x0a, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0xff, 0x86,  /* INS: Authentication */
+    0x00,  /* P1: */
+    0x00,  /* P2: */
+    0x05,  /* Lc: 5 bytes (Authentication Data Bytes) */
+    0x01,  /* Version */
+    0x00,  /* 0x00 */
+    block, /* Block number */
+    type,  /* Key type: TYPE A (0x60) or TYPE B (0x61) */
+    loc    /* Key number (key location): 0 or 1 */
+  ]).buffer, 1.0, function(rc, data) {
+    console.log("[DEBUG] acr122_authentication(loc: " + loc +
+      ", type: " + type + ", block: " + block + ") = " + rc);
+    if (callback) callback(rc, data);
+  });
+};
+
+// JUST MOVED, need more refactoring
+/* For Mifare Classic only. The 'block' is in 16-bytes unit. */
+ACR122.prototype.publicAuthentication = function(rwloop,block, cb) {
+  var self = this;
+  var callback = cb;
+  var sector = Math.floor(block / 4);
+
+  function try_keyA(k) {
+    var ki = k;  // for closure
+    if (ki >= 3) {  // failed authentication
+      if (callback) callback(0xfff);
+      return;
+    }
+    self.acr122_load_authentication_keys(rwloop,ki, 0, function(rc, data) {
+      if (rc) return;
+      self.acr122_authentication(rwloop,block, 0, 0x60/*KEY A*/, function(rc, data) {
+        if (rc) return try_keyA(ki + 1);
+        self.authed_sector = sector;
+        self.auth_key = self.KEYS[ki];
+
+        // try_keyB(): always the default key
+        self.acr122_load_authentication_keys(rwloop,self.KEYS[0], 1,
+          function(rc, data) {
+            self.acr122_authentication(rwloop,block, 1, 0x61/*KEY B*/,
+              function(rc, data) {
+                if (callback) callback(rc, data);
+              });
+          });
+      });
+    });
+  }
+
+  if (self.detected_tag == "Mifare Classic 1K") {
+    if (self.dev && self.dev.acr122) {
+      if (self.authed_sector != sector) {
+        console.log("[DEBUG] Public Authenticate sector " + sector);
+        try_keyA(0);
+      } else {
+        if (callback) callback(0, null);
+      }
+    } else {
+      if (callback) callback(0, null);
+    }
+  } else {
+    if (callback) callback(0, null);
+  }
+};
+
+// JUST MOVED, need more refactoring
+/* For Mifare Classic only. The 'block' is in 16-bytes unit. */
+ACR122.prototype.privateAuthentication = function(rwloop,block, key, cb) {
+  var self = this;
+  var callback = cb;
+  var sector = Math.floor(block / 4);
+
+  if (self.detected_tag == "Mifare Classic 1K") {
+    if (self.dev && self.dev.acr122) {
+      if (self.authed_sector != sector) {
+        console.log("[DEBUG] Private Authenticate sector " + sector);
+        self.acr122_load_authentication_keys(rwloop,key, 1,
+          function(rc, data) {
+            self.acr122_authentication(rwloop,block, 1, 0x61/*KEY B*/,
+              function(rc, data) {
+                if (rc) { console.log("KEY B AUTH ERROR"); return rc; }
+                if (callback) callback(rc, data);
+              });
+          });
+      } else {
+        if (callback) callback(0, null);
+      }
+    } else {
+      if (callback) callback(0, null);
+    }
+  } else {
+    if (callback) callback(0, null);
+  }
+};
+
+// JUST MOVED, need more refactoring
+ACR122.prototype.acr122_set_timeout = function(rwloop,timeout /* secs */, cb) {
+  var self = this;
+  var callback = cb;
+
+  var unit = Math.ceil(timeout / 5);
+  if (unit >= 0xff) unit = 0xff;
+  console.log("[DEBUG] acr122_set_timeout(round up to " + unit * 5 + " secs)");
+
+  rwloop.exchange(new Uint8Array([
+    0x6b, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0xff, 0x00, 0x41, unit, 0x00]).buffer, 1.0, function(rc, data) {
+    if (callback) callback(rc, data);
+  });
+}
