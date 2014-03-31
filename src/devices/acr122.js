@@ -16,7 +16,7 @@ function ACR122(dev) {
       pseudo[3] = 0x00;                            //   P2 (fixed 0)
       pseudo[4] = payload.length;                   //   Lc (Number of Bytes to send)
 
-      console.log(UTIL_fmt(">>> ACR122 >>> Pseudo ADPU | Class = FF | INS = 00 | P1 = 00 | P2 = 00 | Lc = " + payload.length + " | " + UTIL_BytesToHex(payload)));
+      console.log(UTIL_fmt(">>> ACR122 >>> Pseudo PN53x | Class = FF | INS = 00 | P1 = 00 | P2 = 00 | Lc = " + payload.length + " | " + UTIL_BytesToHex(payload)));
       self.ccid.PC_TO_RDR_Escape(UTIL_concat(pseudo, payload), callback);
     }
   }
@@ -72,7 +72,7 @@ ACR122.prototype.acr122_load_authentication_keys = function (rwloop, key, loc, c
   var callback = cb;
 
   if (key == null) key = self.KEYS[0];
-  else if (typeof key != "object") key = self.KEYS[key];
+  else if (typeof key != "object") key = rwloop.KEYS[key];
 
   console.log(UTIL_fmt(">>> ACR122 >>> LoadAuthenticationKey.1 | Class = FF | INS = 82 | P = 00 " + loc + " | Lc = 06"));
   console.log(UTIL_fmt(">>> ACR122 >>> LoadAuthenticationKey.2 | " + UTIL_BytesToHex(key)));
@@ -132,11 +132,11 @@ ACR122.prototype.publicAuthentication = function (rwloop, block, cb) {
       if (rc) return;
       self.acr122_authentication(rwloop, block, 0, 0x60/*KEY A*/, function (rc, data) {
         if (rc) return try_keyA(ki + 1);
-        self.authed_sector = sector;
-        self.auth_key = self.KEYS[ki];
+        rwloop.authed_sector = sector;
+        rwloop.auth_key = rwloop.KEYS[ki];
 
         // try_keyB(): always the default key
-        self.acr122_load_authentication_keys(rwloop, self.KEYS[0], 1,
+        self.acr122_load_authentication_keys(rwloop, rwloop.KEYS[0], 1,
           function (rc, data) {
             self.acr122_authentication(rwloop, block, 1, 0x61/*KEY B*/,
               function (rc, data) {
@@ -147,14 +147,10 @@ ACR122.prototype.publicAuthentication = function (rwloop, block, cb) {
     });
   }
 
-  if (self.detected_tag == "Mifare Classic 1K") {
-    if (self.dev && self.dev.acr122) {
-      if (self.authed_sector != sector) {
-        console.log("[DEBUG] Public Authenticate sector " + sector);
-        try_keyA(0);
-      } else {
-        if (callback) callback(0, null);
-      }
+  if (rwloop.detected_tag == "Mifare Classic 1K") {
+    if (rwloop.authed_sector != sector) {
+      console.log("[DEBUG] Public Authenticate sector " + sector);
+      try_keyA(0);
     } else {
       if (callback) callback(0, null);
     }
@@ -171,23 +167,19 @@ ACR122.prototype.privateAuthentication = function (rwloop, block, key, cb) {
   var sector = Math.floor(block / 4);
 
   if (self.detected_tag == "Mifare Classic 1K") {
-    if (self.dev && self.dev.acr122) {
-      if (self.authed_sector != sector) {
-        console.log("[DEBUG] Private Authenticate sector " + sector);
-        self.acr122_load_authentication_keys(rwloop, key, 1,
-          function (rc, data) {
-            self.acr122_authentication(rwloop, block, 1, 0x61/*KEY B*/,
-              function (rc, data) {
-                if (rc) {
-                  console.log("KEY B AUTH ERROR");
-                  return rc;
-                }
-                if (callback) callback(rc, data);
-              });
-          });
-      } else {
-        if (callback) callback(0, null);
-      }
+    if (self.authed_sector != sector) {
+      console.log("[DEBUG] Private Authenticate sector " + sector);
+      self.acr122_load_authentication_keys(rwloop, key, 1,
+        function (rc, data) {
+          self.acr122_authentication(rwloop, block, 1, 0x61/*KEY B*/,
+            function (rc, data) {
+              if (rc) {
+                console.log("KEY B AUTH ERROR");
+                return rc;
+              }
+              if (callback) callback(rc, data);
+            });
+        });
     } else {
       if (callback) callback(0, null);
     }
