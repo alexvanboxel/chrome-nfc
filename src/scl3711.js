@@ -299,7 +299,7 @@ usbSCL3711.prototype.ccid_read = function(timeout, cb) {
   this.read(timeout, cb);
 };
 
-// TODO: CCID, temp method to make the new ADPU functions work with the pump
+// TODO: CCID, temp method to make the new PN53x functions work with the pump
 usbSCL3711.prototype.ccid_exchange = function (data, timeout, cb) {
   data.debug();
   this.nfcreader.command(data,cb);
@@ -350,9 +350,9 @@ usbSCL3711.prototype.close = function() {
 
   /* deselect and release target if any tag is associated. */
   function deselect_release(cb) {
-    self.ccid_exchange(new ADPU.InDeselect(), 1.0 /* timeout */,
+    self.ccid_exchange(new PN53x.InDeselect(), 1.0 /* timeout */,
       function(rc, data) {
-        self.ccid_exchange(new ADPU.InRelease(), 1.0 /* timeout */,
+        self.ccid_exchange(new PN53x.InRelease(), 1.0 /* timeout */,
           function(rc, data) {
           });
       });
@@ -458,11 +458,11 @@ usbSCL3711.prototype.wait_for_passive_target = function(timeout, cb) {
 
   if (self.dev.acr122) {
     self.nfcreader.acr122_set_timeout(self,timeout, function(rc, data) {
-      var adpu = new ADPU.InListPassiveTarget();
+      var adpu = new PN53x.InListPassiveTarget();
       self.ccid_exchange(adpu,timeout,cb);
     });
   } else {
-    var adpu = new ADPU.InListPassiveTarget();
+    var adpu = new PN53x.InListPassiveTarget();
     self.ccid_exchange(adpu,timeout,cb);
   }
 };
@@ -594,15 +594,21 @@ usbSCL3711.prototype.write_block = function(blk_no, data, cb, write_inst) {
 // Send apdu (0x40 -- InDataExchange), receive response.
 usbSCL3711.prototype.apdu = function(req, cb, write_only) {
   if (!cb) cb = defaultCallback;
+  var self = this;
 
   // Command 0x40 InDataExchange, our apdu as payload.
-  var u8 = new Uint8Array(this.makeFrame(0x40,
-                                         UTIL_concat([0x01/*Tg*/], req)));
+  var data = new PN53x.InDataExchange(req);
+//  self.ccid_exchange(cmd);
+  data.debug();
+  self.nfcreader.command(data, cb);
 
-  // Write out in 64 bytes frames.
-  for (var i = 0; i < u8.length; i += 64) {
-    this.dev.writeFrame(new Uint8Array(u8.subarray(i, i + 64)).buffer);
-  }
+//  var u8 = new Uint8Array(this.makeFrame(0x40,
+//                                         UTIL_concat([0x01/*Tg*/], req)));
+// TODO: IF WE NEED TO CHUNK IT, IT SHOULD BE PUSHED TO ANOTHER LEVEL, SEE IF WE CAN GET AWAY WITH IT
+//  // Write out in 64 bytes frames.
+//  for (var i = 0; i < u8.length; i += 64) {
+//    this.dev.writeFrame(new Uint8Array(u8.subarray(i, i + 64)).buffer);
+//  }
 
   if (write_only) {
     cb(0, null);  // tell caller the packet has been sent.

@@ -1,10 +1,7 @@
-var ADPU = {
-
-
-
+var PN53x = {
 }
 
-ADPU.InListPassiveTarget = function () {
+PN53x.InListPassiveTarget = function () {
   this.Type = 1;
 
   this.MaxTg = 0x01;
@@ -35,13 +32,13 @@ ADPU.InListPassiveTarget = function () {
       }
     }
 
-    console.log(UTIL_fmt(">>> ADPU >>> InListPassiveTarget.1 | D4 4A | MaxTg = " + this.MaxTg + " | BrTy = " + BrTyOut(this.BrTy)));
-    console.log(UTIL_fmt(">>> ADPU >>> InListPassiveTarget.2 | InitiatorData:" + UTIL_BytesToHexWithSeparator(this.InitiatorData)));
+    console.log(UTIL_fmt(">>> PN53x >>> InListPassiveTarget.1 | D4 4A | MaxTg = " + this.MaxTg + " | BrTy = " + BrTyOut(this.BrTy)));
+    console.log(UTIL_fmt(">>> PN53x >>> InListPassiveTarget.2 | InitiatorData:" + UTIL_BytesToHexWithSeparator(this.InitiatorData)));
   }
 }
 
 
-ADPU.InDeselect = function () {
+PN53x.InDeselect = function () {
   this.Type = 1;
 
   this.Tg = 0x01;
@@ -55,12 +52,12 @@ ADPU.InDeselect = function () {
   }
 
   this.debug = function () {
-    console.log(UTIL_fmt(">>> ADPU >>> InDeselect | D4 44 | Tg = " + this.Tg));
+    console.log(UTIL_fmt(">>> PN53x >>> InDeselect | D4 44 | Tg = " + this.Tg));
   }
 }
 
 
-ADPU.InRelease = function () {
+PN53x.InRelease = function () {
   this.Type = 1;
 
   this.Tg = 0x01;
@@ -74,7 +71,26 @@ ADPU.InRelease = function () {
   }
 
   this.debug = function () {
-    console.log(UTIL_fmt(">>> ADPU >>> InRelease | D4 52 | Tg = " + this.Tg));
+    console.log(UTIL_fmt(">>> PN53x >>> InRelease | D4 52 | Tg = " + this.Tg));
+  }
+}
+
+PN53x.InDataExchange = function (data) {
+  this.Type = 1;
+
+  this.Tg = 0x01;
+  this.DataOut = data;
+
+  this.make = function () {
+    return new UTIL_concat(new Uint8Array([0xD4, 0x40, this.Tg]),this.DataOut);
+  }
+
+  this.response = function (frame) {
+
+  }
+
+  this.debug = function () {
+    console.log(UTIL_fmt(">>> PN53x >>> InDataExchange | D4 40 | Tg = " + this.Tg + " | "+ UTIL_BytesToHex(this.DataOut)));
   }
 }
 
