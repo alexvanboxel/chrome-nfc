@@ -5,7 +5,7 @@ function ACR122(dev) {
 
   this.command = function (adpu, callback) {
 
-    if (adpu.Type == 1) {
+    if (adpu.getCmdType() == 1) {
 
       payload = adpu.make();
 
