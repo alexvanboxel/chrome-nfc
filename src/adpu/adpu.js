@@ -3,20 +3,26 @@ var PN53x = {
 
 PN53x.InListPassiveTarget = function () {
   this.Type = 1;
+  var Type = 1;
+  var MaxTg = 0x01;
+  var BrTy = 0x00;
+  var InitiatorData = null;
 
-  this.MaxTg = 0x01;
-  this.BrTy = 0x00;
-  this.InitiatorData = null;
+  var that = {}
 
-  this.make = function () {
-    return new Uint8Array([0xD4, 0x4A, this.MaxTg, this.BrTy]);
+  that.getCmdType = function () {
+    return Type;
   }
 
-  this.response = function (frame) {
+  that.make = function () {
+    return new Uint8Array([0xD4, 0x4A, MaxTg, BrTy]);
+  }
+
+  that.response = function (frame) {
 
   }
 
-  this.debug = function () {
+  that.debug = function () {
     function BrTyOut(val) {
       switch (val) {
         case 0x00:
@@ -32,66 +38,84 @@ PN53x.InListPassiveTarget = function () {
       }
     }
 
-    console.log(UTIL_fmt(">>> PN53x >>> InListPassiveTarget.1 | D4 4A | MaxTg = " + this.MaxTg + " | BrTy = " + BrTyOut(this.BrTy)));
-    console.log(UTIL_fmt(">>> PN53x >>> InListPassiveTarget.2 | InitiatorData:" + UTIL_BytesToHexWithSeparator(this.InitiatorData)));
+    console.log(UTIL_fmt(">>> PN53x >>> InListPassiveTarget.1 | D4 4A | MaxTg = " + MaxTg + " | BrTy = " + BrTyOut(BrTy)));
+    console.log(UTIL_fmt(">>> PN53x >>> InListPassiveTarget.2 | InitiatorData:" + UTIL_BytesToHexWithSeparator(InitiatorData)));
   }
+
+  return that;
 }
 
 
 PN53x.InDeselect = function () {
-  this.Type = 1;
+  var Type = 1;
+  var Tg = 0x01;
+  var that = {}
 
-  this.Tg = 0x01;
-
-  this.make = function () {
-    return new Uint8Array([0xD4, 0x44, this.Tg]);
+  that.getCmdType = function () {
+    return Type;
   }
 
-  this.response = function (frame) {
+  that.make = function () {
+    return new Uint8Array([0xD4, 0x44, Tg]);
+  }
+
+  that.response = function (frame) {
 
   }
 
-  this.debug = function () {
-    console.log(UTIL_fmt(">>> PN53x >>> InDeselect | D4 44 | Tg = " + this.Tg));
+  that.debug = function () {
+    console.log(UTIL_fmt(">>> PN53x >>> InDeselect | D4 44 | Tg = " + Tg));
   }
+  return that;
 }
 
 
 PN53x.InRelease = function () {
-  this.Type = 1;
+  var Type = 1;
+  var Tg = 0x01;
 
-  this.Tg = 0x01;
+  var that = {}
 
-  this.make = function () {
-    return new Uint8Array([0xD4, 0x52, this.Tg]);
+  that.getCmdType = function () {
+    return Type;
   }
 
-  this.response = function (frame) {
+  that.make = function () {
+    return new Uint8Array([0xD4, 0x52, Tg]);
+  }
+
+  that.response = function (frame) {
 
   }
 
-  this.debug = function () {
+  that.debug = function () {
     console.log(UTIL_fmt(">>> PN53x >>> InRelease | D4 52 | Tg = " + this.Tg));
   }
+  return that;
 }
 
-PN53x.InDataExchange = function (data) {
-  this.Type = 1;
+PN53x.InDataExchange = function (spec) {
+  var Type = 1;
+  var Tg = 0x01;
+  var DataOut = spec.DataOut;
 
-  this.Tg = 0x01;
-  this.DataOut = data;
+  var that = {};
 
-  this.make = function () {
-    return new UTIL_concat(new Uint8Array([0xD4, 0x40, this.Tg]),this.DataOut);
+  that.getCmdType = function () {
+    return Type;
   }
 
-  this.response = function (frame) {
+  that.make = function () {
+    return new UTIL_concat(new Uint8Array([0xD4, 0x40, Tg]), DataOut);
+  }
+
+  that.response = function (frame) {
 
   }
 
-  this.debug = function () {
-    console.log(UTIL_fmt(">>> PN53x >>> InDataExchange | D4 40 | Tg = " + this.Tg + " | "+ UTIL_BytesToHex(this.DataOut)));
+  that.debug = function () {
+    console.log(UTIL_fmt(">>> PN53x >>> InDataExchange | D4 40 | Tg = " +  Tg + " | " + UTIL_BytesToHex(this.DataOut)));
   }
+
+  return that;
 }
-
-

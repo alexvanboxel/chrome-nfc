@@ -350,9 +350,9 @@ usbSCL3711.prototype.close = function() {
 
   /* deselect and release target if any tag is associated. */
   function deselect_release(cb) {
-    self.ccid_exchange(new PN53x.InDeselect(), 1.0 /* timeout */,
+    self.ccid_exchange(PN53x.InDeselect(), 1.0 /* timeout */,
       function(rc, data) {
-        self.ccid_exchange(new PN53x.InRelease(), 1.0 /* timeout */,
+        self.ccid_exchange(PN53x.InRelease(), 1.0 /* timeout */,
           function(rc, data) {
           });
       });
@@ -458,12 +458,10 @@ usbSCL3711.prototype.wait_for_passive_target = function(timeout, cb) {
 
   if (self.dev.acr122) {
     self.nfcreader.acr122_set_timeout(self,timeout, function(rc, data) {
-      var adpu = new PN53x.InListPassiveTarget();
-      self.ccid_exchange(adpu,timeout,cb);
+      self.ccid_exchange(PN53x.InListPassiveTarget(),timeout,cb);
     });
   } else {
-    var adpu = new PN53x.InListPassiveTarget();
-    self.ccid_exchange(adpu,timeout,cb);
+    self.ccid_exchange(PN53x.InListPassiveTarget(),timeout,cb);
   }
 };
 
@@ -597,7 +595,7 @@ usbSCL3711.prototype.apdu = function(req, cb, write_only) {
   var self = this;
 
   // Command 0x40 InDataExchange, our apdu as payload.
-  var data = new PN53x.InDataExchange(req);
+  var data = PN53x.InDataExchange({DataOut: req});
 //  self.ccid_exchange(cmd);
   data.debug();
   self.nfcreader.command(data, cb);
