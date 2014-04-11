@@ -66,8 +66,10 @@ function NFC() {
             return rc;
           }
           // cache device info
-          device.vendorId = device.dev.dev.vendorId;
-          device.productId = device.dev.dev.productId;
+          device.vendorId = device.nfcreader.vendorId;
+          device.productId = device.nfcreader.productId;
+          //device.vendorId = device.dev.dev.vendorId;
+          //device.productId = device.dev.dev.productId;
 
           cb([device]);
         }, function() {

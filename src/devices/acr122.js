@@ -1,4 +1,9 @@
 function ACR122(dev) {
+
+  // TEMP
+  this.vendorId = 0x072f;
+  this.productId = 0x2200;
+
   var self = this;
   this.usb = dev;
   this.ccid = new CCID(dev);
@@ -198,6 +203,20 @@ ACR122.prototype.acr122_set_timeout = function (rwloop, timeout /* secs */, cb) 
 
   console.log(UTIL_fmt(">>> ACR122 >>> Set Timeout to " + unit * 5 + " secs | Class = FF | INS = 00 | P1 = 41 | P2 = " + unit + " | Lc = 00"));
   self.ccid.PC_TO_RDR_Escape(new Uint8Array([0xff, 0x00, 0x41, unit, 0x00]));
+
+  rwloop.ccid_read(100, function (rc, data) {
+    if (callback) callback(rc, data);
+  });
+}
+
+// JUST MOVED, need more refactoring
+ACR122.prototype.setPiccOperatingParameter = function (rwloop, param, cb) {
+  var self = this;
+  var callback = cb;
+
+
+  console.log(UTIL_fmt(">>> ACR122 >>> Set PICC Operating Parameter to " + param + " | Class = FF | INS = 00 | P1 = 51 | P2 = " + param + " | Lc = 00"));
+  self.ccid.PC_TO_RDR_Escape(new Uint8Array([0xff, 0x00, 0x41, param, 0x00]));
 
   rwloop.ccid_read(100, function (rc, data) {
     if (callback) callback(rc, data);

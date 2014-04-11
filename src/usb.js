@@ -6,7 +6,7 @@
  * You may obtain a copy of the License at
 
  *     http://www.apache.org/licenses/LICENSE-2.0
-  
+
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -14,149 +14,174 @@
  * limitations under the License.
  */
 /**
- * @fileoverview Low level usb cruft to SCL3711 NFC token.
+ * @fileoverview Low level usb driver.
  */
 
 'use strict';
 
 // Low level 'driver'. One per physical USB device.
-function llSCL3711(dev, acr122) {
-  this.dev = dev;
-  this.txqueue = [];
-  this.clients = [];
-  this.acr122 = acr122;
-  if (acr122) {
-    this.endpoint = 2;
-  } else {
-    // scl3711
-    this.endpoint = 4;
-  }
+function usbDriver(usbHandle, spec) {
+  var txqueue = [];
+  var clients = [];
+  var vendorId = spec.vendorId;
+  var productId = spec.productId;
+  var endpoint = 4;
 
-  this.readLoop();
-}
-
-llSCL3711.prototype.notifyClientOfClosure = function(client) {
-  var cb = client.onclose;
-  if (cb) window.setTimeout(cb, 0);
-};
-
-llSCL3711.prototype.close = function() {
-  // Tell clients.
-  while (this.clients.length != 0) {
-    this.notifyClientOfClosure(this.clients.shift());
-  }
-
-  // Tell global list to drop this device.
-  dev_manager.dropDevice(this);
-};
-
-llSCL3711.prototype.publishFrame = function(f) {
-  // Push frame to all clients.
-  var old = this.clients;
-
-  var remaining = [];
-  var changes = false;
-  for (var i = 0; i < old.length; ++i) {
-    var client = old[i];
-    if (client.receivedFrame(f)) {
-      // Client still alive; keep on list.
-      remaining.push(client);
-    } else {
-      changes = true;
-      console.log(UTIL_fmt(
-          '[' + client.cid.toString(16) + '] left?'));
-    }
-  }
-  if (changes) this.clients = remaining;
-};
-
-llSCL3711.prototype.readLoop = function() {
-  if (!this.dev) return;
-
-  console.log(UTIL_fmt('ReadLoop: Entering readLoop'));
-
-  var self = this;
-  chrome.usb.bulkTransfer(
-    this.dev,
-    { direction:'in', endpoint:this.endpoint, length:2048 },
-    function(x) {
-      if (x.data) {
-        if (x.data.byteLength >= 5) {
-
-          var u8 = new Uint8Array(x.data);
-          console.log(UTIL_fmt('<<< USB <<< ' + UTIL_BytesToHex(u8)));
-
-          self.publishFrame(x.data);
-
-          // Read more.
-          window.setTimeout(function() { self.readLoop(); } , 0);
-        } else {
-          console.log(UTIL_fmt('ReadLoop: tiny reply!'));
-          console.log(x);
-          window.setTimeout(function() { self.close(); }, 0);
-        }
-
-      } else {
-        console.log('no x.data!');
-        console.log(x);
-        throw 'no x.data!';
-      }
-    }
-  );
-};
-
-// Register an opener.
-llSCL3711.prototype.registerClient = function(who) {
-  this.clients.push(who);
-};
-
-// De-register an opener.
-// Returns number of remaining listeners for this device.
-llSCL3711.prototype.deregisterClient = function(who) {
-  var current = this.clients;
-  this.clients = [];
-  for (var i = 0; i < current.length; ++i) {
-    var client = current[i];
-    if (client != who) this.clients.push(client);
-  }
-  return this.clients.length;
-};
-
-// Stuffs all queued frames from txqueue[] to device.
-llSCL3711.prototype.writePump = function() {
-  if (!this.dev) return;  // Ignore.
-
-  if (this.txqueue.length == 0) return;  // Done with current queue.
-
-  var frame = this.txqueue[0];
-
-  var self = this;
-  function transferComplete(x) {
-    self.txqueue.shift();  // drop sent frame from queue.
-    if (self.txqueue.length != 0) {
-      window.setTimeout(function() { self.writePump(); }, 0);
-    }
+  // TODO: Need to remove this...
+  var isACR122 = function () {
+    return vendorId == 0x072f && productId == 0x2200;
   };
 
-  var u8 = new Uint8Array(frame);
-  console.log(UTIL_fmt('>>> USB >>> ' + UTIL_BytesToHex(u8)));
+  var readLoop = function () {
+    if (!usbHandle) return;
 
-  chrome.usb.bulkTransfer(
-      this.dev,
-      {direction:'out', endpoint:this.endpoint, data:frame},
+    console.log(UTIL_fmt('ReadLoop: Entering readLoop'));
+
+    var self = this;
+    chrome.usb.bulkTransfer(
+      usbHandle,
+      { direction: 'in', endpoint: endpoint, length: 2048 },
+      function (x) {
+        if (x.data) {
+          if (x.data.byteLength >= 5) {
+
+            var u8 = new Uint8Array(x.data);
+            console.log(UTIL_fmt('<<< USB <<< ' + UTIL_BytesToHex(u8)));
+
+            publishFrame(x.data);
+
+            // Read more.
+            window.setTimeout(function () {
+              readLoop();
+            }, 0);
+          } else {
+            console.log(UTIL_fmt('ReadLoop: tiny reply!'));
+            console.log(x);
+            window.setTimeout(function () {
+              self.close();
+            }, 0);
+          }
+
+        } else {
+          console.log('no x.data!');
+          console.log(x);
+          throw 'no x.data!';
+        }
+      }
+    );
+  };
+
+  var notifyClientOfClosure = function (client) {
+    var cb = client.onclose;
+    if (cb) window.setTimeout(cb, 0);
+  };
+
+  // Stuffs all queued frames from txqueue[] to device.
+  var writePump = function () {
+    if (!usbHandle) return;  // Ignore.
+
+    if (txqueue.length == 0) return;  // Done with current queue.
+
+    var frame = txqueue[0];
+
+    function transferComplete(x) {
+      txqueue.shift();  // drop sent frame from queue.
+      if (txqueue.length != 0) {
+        window.setTimeout(function () {
+          writePump();
+        }, 0);
+      }
+    }
+
+    var u8 = new Uint8Array(frame);
+    console.log(UTIL_fmt('>>> USB >>> ' + UTIL_BytesToHex(u8)));
+
+    chrome.usb.bulkTransfer(
+      usbHandle,
+      {direction: 'out', endpoint: endpoint, data: frame},
       transferComplete
-  );
-};
+    );
+  };
 
-// Queue frame to be sent.
-// If queue was empty, start the write pump.
-// Returns false if device is MIA.
-llSCL3711.prototype.writeFrame = function(frame) {
-  if (!this.dev) return false;
+  var close = function () {
+    // Tell clients.
+    while (clients.length != 0) {
+      notifyClientOfClosure(clients.shift());
+    }
 
-  var wasEmpty = (this.txqueue.length == 0);
-  this.txqueue.push(frame);
-  if (wasEmpty) this.writePump();
+    // Tell global list to drop this device.
+    dev_manager.dropDevice(this);
+  };
 
-  return true;
-};
+  var publishFrame = function (f) {
+    // Push frame to all clients.
+    var old = clients;
+
+    var remaining = [];
+    var changes = false;
+    for (var i = 0; i < old.length; ++i) {
+      var client = old[i];
+      if (client.receivedFrame(f)) {
+        // Client still alive; keep on list.
+        remaining.push(client);
+      } else {
+        changes = true;
+        console.log(UTIL_fmt(
+            '[' + client.cid.toString(16) + '] left?'));
+      }
+    }
+    if (changes) clients = remaining;
+  };
+
+
+  // Register an opener.
+  var registerClient = function (who) {
+    clients.push(who);
+  };
+
+  // De-register an opener.
+  // Returns number of remaining listeners for this device.
+  var deregisterClient = function (who) {
+    var current = clients;
+    clients = [];
+    for (var i = 0; i < current.length; ++i) {
+      var client = current[i];
+      if (client != who) clients.push(client);
+    }
+    return clients.length;
+  };
+
+  // Queue frame to be sent.
+  // If queue was empty, start the write pump.
+  // Returns false if device is MIA.
+  var writeFrame = function (frame) {
+    if (!usbHandle) return false;
+
+    var wasEmpty = (txqueue.length == 0);
+    txqueue.push(frame);
+    if (wasEmpty) writePump();
+
+    return true;
+  };
+
+  // set other endpoint for ACR122
+  if (isACR122()) {
+    endpoint = 2;
+  }
+
+  // start readLoop and return public methods
+  readLoop();
+
+  var pub = {};
+  // deprecated methpd
+  pub.isACR122 = isACR122;
+  // public methods
+  pub.registerClient = registerClient;
+  pub.deregisterClient = deregisterClient;
+  pub.writeFrame = writeFrame;
+  pub.publishFrame = publishFrame;
+  pub.close = close;
+  return pub;
+}
+
+

@@ -40,7 +40,6 @@ function CCID(dev) {
     console.log(UTIL_fmt(">>> CCID >>> PC_TO_RDR_Escape.2 | " + UTIL_BytesToHex(payload)));
     var buffer = UTIL_concat(c8, payload).buffer;
     this.usb.writeFrame(buffer);
-//    this.usb.read(1000, callback);
   };
 
   this.PC_to_RDR_IccPowerOn = function (cntx) {
@@ -61,7 +60,6 @@ function CCID(dev) {
     console.log(UTIL_fmt(">>> CCID >>> PC_to_RDR_IccPowerOn | 62 | LEN = 00 00 00 00 | INS = 00 | bSlot = 00 | bSeq = 00 | abRFU = 01 00 00"));
     var buffer = c8.buffer;
     this.usb.writeFrame(buffer);
-//    this.usb.read(1000, callback);
 
 //    this.response = RDR_to_PC_DataBlock();
 //    return [];
