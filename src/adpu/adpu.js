@@ -40,6 +40,10 @@ var PN53x = {
     }
   }
 
+};
+
+PN53x.Command = function() {
+
 }
 
 PN53x.InListPassiveTarget = function () {
@@ -107,7 +111,7 @@ PN53x.InListPassiveTarget = function () {
   }
 
   return that;
-}
+};
 
 
 PN53x.InDeselect = function () {
@@ -131,7 +135,7 @@ PN53x.InDeselect = function () {
     console.log(UTIL_fmt(">>> PN53x >>> InDeselect | D4 44 | Tg = " + Tg));
   }
   return that;
-}
+};
 
 
 PN53x.InRelease = function () {
@@ -156,7 +160,7 @@ PN53x.InRelease = function () {
     console.log(UTIL_fmt(">>> PN53x >>> InRelease | D4 52 | Tg = " + Tg));
   }
   return that;
-}
+};
 
 PN53x.InDataExchange = function (spec) {
   var Type = 1;
@@ -186,7 +190,6 @@ PN53x.InDataExchange = function (spec) {
       throw {type: "PN53xException", message: self.Status(f[2])}
     }
     return (f.subarray(3));
-
   }
 
   that.debug = function () {
@@ -194,4 +197,148 @@ PN53x.InDataExchange = function (spec) {
   }
 
   return that;
-}
+};
+
+PN53x.TgInitAsTarget = function (spec) {
+  var Type = 1;
+  var Data = spec.Data;
+
+  var that = {}
+
+  that.getCmdType = function () {
+    return Type;
+  }
+
+  that.make = function () {
+    return new UTIL_concat(Uint8Array([0xD4, 0x8C]), Data);
+  }
+
+  that.response = function (f) {
+    if (f[0] != 0xD5) {
+      throw {type: "PN53xException", message: "Response is not an PN53x response."}
+    }
+    if (f[1] != 0x8D) {
+      throw {type: "PN53xException", message: "Expected 0x8D (TgInitAsTarget reply), but was " + f[1]}
+    }
+    console.log(UTIL_fmt("<<< PN53x <<< TgInitAsTarget.1 | " + UTIL_BytesToHex(f)));
+    var data = {}
+    data.Mode = f[2];
+    data.InitiatorCommand = f.subarray(3);
+    console.log(data);
+    return data;
+  }
+
+  that.debug = function () {
+    console.log(UTIL_fmt(">>> PN53x >>> TgInitAsTarget.1 | D4 8C | " + UTIL_BytesToHex(Data)));
+  }
+
+  return that;
+};
+
+PN53x.TgGetInitiatorCommand = function () {
+  var Type = 1;
+
+  var that = {}
+
+  that.getCmdType = function () {
+    return Type;
+  }
+
+  that.make = function () {
+    return new Uint8Array([0xD4, 0x88, Tg]);
+  }
+
+  that.response = function (frame) {
+    if (f[0] != 0xD5) {
+      throw {type: "PN53xException", message: "Response is not an PN53x response."}
+    }
+    if (f[1] != 0x89) {
+      throw {type: "PN53xException", message: "Expected 0x89 (TgGetInitiatorCommand reply), but was " + f[1]}
+    }
+    console.log(UTIL_fmt("<<< PN53x <<< TgGetInitiatorCommand.1 | " + UTIL_BytesToHex(f)));
+
+    if (f[2] != 0x00) {
+      throw {type: "PN53xException", message: self.Status(f[2])}
+    }
+    return (f.subarray(3));
+  }
+
+  that.debug = function () {
+    console.log(UTIL_fmt(">>> PN53x >>> TgGetInitiatorCommand | D4 88"));
+  }
+  return that;
+};
+
+PN53x.TgResponseToInitiator = function (spec) {
+  var Type = 1;
+  var TgResponse = spec.TgResponse;
+
+  var that = {};
+
+  that.getCmdType = function () {
+    return Type;
+  }
+
+  that.make = function () {
+    return new UTIL_concat(new Uint8Array([0xD4, 0x90]), TgResponse);
+  }
+
+  that.response = function (f) {
+    if (f[0] != 0xD5) {
+      throw {type: "PN53xException", message: "Response is not an PN53x response."}
+    }
+    if (f[1] != 0x91) {
+      throw {type: "PN53xException", message: "Expected 0x41 (TgResponseToInitiator reply), but was " + f[1]}
+    }
+    console.log(UTIL_fmt("<<< PN53x <<< TgResponseToInitiator.1 | " + UTIL_BytesToHex(f)));
+
+    if (f[2] != 0x00) {
+      throw {type: "PN53xException", message: self.Status(f[2])}
+    }
+    return;
+  }
+
+  that.debug = function () {
+    console.log(UTIL_fmt(">>> PN53x >>> TgResponseToInitiator | D4 90 | " + UTIL_BytesToHex(TgResponse)));
+  }
+
+  return that;
+};
+
+PN53x.RFConfiguration = function (spec) {
+  var Type = 1;
+  var CfgItem = spec.CfgItem;
+  var ConfigurationData = spec.ConfigurationData;
+
+  var that = {};
+
+  that.getCmdType = function () {
+    return Type;
+  }
+
+  that.make = function () {
+    return new UTIL_concat(new Uint8Array([0xD4, 0x32, CfgItem]), ConfigurationData);
+  }
+
+  that.response = function (f) {
+    if (f[0] != 0xD5) {
+      throw {type: "PN53xException", message: "Response is not an PN53x response."}
+    }
+    if (f[1] != 0x33) {
+      throw {type: "PN53xException", message: "Expected 0x41 (RFConfiguration reply), but was " + f[1]}
+    }
+    console.log(UTIL_fmt("<<< PN53x <<< RFConfiguration.1 | " + UTIL_BytesToHex(f)));
+
+    if (f[2] != 0x00) {
+      throw {type: "PN53xException", message: self.Status(f[2])}
+    }
+    return;
+  }
+
+  that.debug = function () {
+    console.log(UTIL_fmt(">>> PN53x >>> RFConfiguration | D4 32 | CfgIten = " + CfgItem + " | " + UTIL_BytesToHex(ConfigurationData)));
+  }
+
+  return that;
+};
+

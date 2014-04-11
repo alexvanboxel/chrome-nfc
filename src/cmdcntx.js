@@ -1,7 +1,9 @@
-var cmdCntx = function (finalCallback,timeout) {
+var cmdCntx = function (spec) {
 
   var stack = [];
   var that = {};
+  var callback = spec.callback;
+  var timeout = spec.timeout;
 
   that.pushLayer = function (handler) {
     stack.push({
@@ -13,12 +15,15 @@ var cmdCntx = function (finalCallback,timeout) {
     return stack.pop();
   };
   that.getFinalCallback = function() {
-    return finalCallback;
+    return callback;
   };
   that.getTimeout = function() {
     return timeout;
   };
+  that.setCallback = function(cb) {
+    callback = cb;
+    return this;
+  }
 
   return that;
-
 };

@@ -83,7 +83,7 @@ devManager.prototype.closeAll = function() {
 devManager.prototype.enumerate = function(cb) {
   var self = this;
 
-  function enumerated(d, acr122) {
+  function enumerated(d, id) {
     var nDevice = 0;
 
     if (d && d.length != 0) {
@@ -111,7 +111,7 @@ devManager.prototype.enumerate = function(cb) {
             chrome.usb.claimInterface(dev, 0, function(result) {
               console.log(UTIL_fmt('claimed'));
               console.log(dev);
-              self.devs.push(new llSCL3711(dev, acr122));
+              self.devs.push(usbDriver(dev, id));
             });
           }, 0);
       })(d[i]);
@@ -154,13 +154,13 @@ devManager.prototype.enumerate = function(cb) {
           chrome.usb.findDevices({'vendorId': 0x04e6, 'productId': 0x5591},
             function (d) {
               if (d && d.length != 0) {
-                enumerated(d, false);
+                enumerated(d, {'vendorId': 0x04e6, 'productId': 0x5591});
               } else {
                 chrome.usb.findDevices(
                     {'vendorId': 0x072f, 'productId': 0x2200},
                     function (d) {
                       if (d && d.length != 0) {
-                        enumerated(d, true);
+                        enumerated(d, {'vendorId': 0x072f, 'productId': 0x2200});
                       }
                     });
               }

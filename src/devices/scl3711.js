@@ -1,4 +1,10 @@
 function SCL3711(dev) {
+
+  // TEMP
+  this.vendorId = 0x04e6;
+  this.productId = 0x5591
+  ;
+
   var self = this;
   this.usb = dev;
   this.ccid = new CCID(dev);
