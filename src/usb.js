@@ -73,7 +73,7 @@ llSCL3711.prototype.publishFrame = function(f) {
 llSCL3711.prototype.readLoop = function() {
   if (!this.dev) return;
 
-  console.log(UTIL_fmt('Entering readLoop'));
+  console.log(UTIL_fmt('ReadLoop: Entering readLoop'));
 
   var self = this;
   chrome.usb.bulkTransfer(
@@ -91,11 +91,9 @@ llSCL3711.prototype.readLoop = function() {
           // Read more.
           window.setTimeout(function() { self.readLoop(); } , 0);
         } else {
-          console.error(UTIL_fmt('tiny reply!'));
-          console.error(x);
-          // TODO(yjlou): I don't think a tiny reply requires close.
-          //              Maybe call dev_manager.close(null, clients[0])?
-          // window.setTimeout(function() { self.close(); }, 0);
+          console.log(UTIL_fmt('ReadLoop: tiny reply!'));
+          console.log(x);
+          window.setTimeout(function() { self.close(); }, 0);
         }
 
       } else {

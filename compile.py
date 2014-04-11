@@ -33,6 +33,7 @@ JS_FILES = [
   'src/devices/acr122.js',
   'src/devices/scl3711.js',
   'src/mifare-classic.js',
+  'src/cmdcntx.js',
   'src/ndef.js',
   'src/nfc.js',
   'src/devmanager.js',

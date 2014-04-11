@@ -3,7 +3,7 @@ function SCL3711(dev) {
   this.usb = dev;
   this.ccid = new CCID(dev);
 
-  this.command = function (adpu, callback) {
+  this.command = function (adpu, cntx) {
 
     if (adpu.Type == 1) {
 
