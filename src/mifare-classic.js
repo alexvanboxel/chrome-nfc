@@ -162,7 +162,6 @@ MifareClassic.prototype.read_physical = function(device, phy_block, cnt, cb) {
       if (rc) return callback(rc);
       dev.read_block(blk_no, function(rc, bn) {
         if (rc) return callback(rc);
-        var bn = new Uint8Array(bn);
 
         // copy KEY A with auth_key from device.
         if ((blk_no % 4) == 3) {
@@ -300,7 +299,7 @@ MifareClassic.prototype.compose = function(ndef) {
     TLV_blocks = UTIL_concat(TLV_blocks, new Uint8Array([  // Sector Trailer
       0xd3, 0xf7, 0xd3, 0xf7, 0xd3, 0xf7,  // NFC pub key
       0x7f, 0x07, 0x88, 0x40,              // access bits, GPB
-      0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,  // KEY B
+      0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF  // KEY B
     ]));
   }
 
@@ -323,7 +322,7 @@ MifareClassic.prototype.compose = function(ndef) {
     /* Sector Trailer */
     0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5,  // MAD access key
     0x78, 0x77, 0x88, 0xc1,              // access bits, GPB
-    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,  // KEY B
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF  // KEY B
   ]);
 
   for (var i = 0; i < TLV_sector_num; i++) {
@@ -423,7 +422,6 @@ MifareClassic.prototype.write_logic = function(device, logic_block,
       var gpb_phy = self.log2sec(blk_no) * 4 + 3;
       dev.read_block(gpb_phy, function(rc, gpb_data) {
         if (rc) return callback(rc);
-        var gpb_data = new Uint8Array(gpb_data);
         gpb_data = self.copy_auth_keys(gpb_data, dev);
 
         if (gpb_phy == 3)

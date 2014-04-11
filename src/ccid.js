@@ -21,7 +21,7 @@ function CCID(dev) {
     return [];
   };
 
-  this.PC_TO_RDR_Escape = function (payload, callback) {
+  this.PC_TO_RDR_Escape = function (payload, cntx) {
     // header
     var apdu_len = payload.length;
     var c8 = new Uint8Array(10);             // CCID header
@@ -43,7 +43,7 @@ function CCID(dev) {
 //    this.usb.read(1000, callback);
   };
 
-  this.PC_to_RDR_IccPowerOn = function () {
+  this.PC_to_RDR_IccPowerOn = function (cntx) {
     // header
 
     var c8 = new Uint8Array(10);             // CCID header
@@ -67,51 +67,51 @@ function CCID(dev) {
 //    return [];
   };
 
-  this.PC_to_RDR_IccPowerff = function (payload) {
+  this.PC_to_RDR_IccPowerff = function (payload,cntx) {
     return [];
   };
 
-  this.PC_to_RDR_GetSlotStatus = function (payload) {
+  this.PC_to_RDR_GetSlotStatus = function (payload,cntx) {
     return [];
   };
 
-  this.PC_to_RDR_XfrBlock = function (payload) {
+  this.PC_to_RDR_XfrBlock = function (payload,cntx) {
     return [];
   };
 
-  this.PC_to_RDR_GetParameters = function (payload) {
+  this.PC_to_RDR_GetParameters = function (payload,cntx) {
     return [];
   };
 
-  this.PC_to_RDR_ResetParameters = function (payload) {
+  this.PC_to_RDR_ResetParameters = function (payload,cntx) {
     return [];
   };
 
-  this.PC_to_RDR_SetParameters = function (payload) {
+  this.PC_to_RDR_SetParameters = function (payload,cntx) {
     return [];
   };
 
-  this.PC_to_RDR_IccClock = function (payload) {
+  this.PC_to_RDR_IccClock = function (payload,cntx) {
     return [];
   };
 
-  this.PC_to_RDR_T0APDU = function (payload) {
+  this.PC_to_RDR_T0APDU = function (payload,cntx) {
     return [];
   };
 
-  this.PC_to_RDR_Secure = function (payload) {
+  this.PC_to_RDR_Secure = function (payload,cntx) {
     return [];
   };
 
-  this.PC_to_RDR_Mechanical = function (payload) {
+  this.PC_to_RDR_Mechanical = function (payload,cntx) {
     return [];
   };
 
-  this.PC_to_RDR_Abort = function (payload) {
+  this.PC_to_RDR_Abort = function (payload,cntx) {
     return [];
   };
 
-  this.PC_to_RDR_SetDataRateAndClockFrequency = function (payload) {
+  this.PC_to_RDR_SetDataRateAndClockFrequency = function (payload,cntx) {
     return [];
   }
 

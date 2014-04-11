@@ -34,8 +34,8 @@ TT2.prototype.read = function(device, cb) {
   function poll_block0(rc, b0_b3) {
     if (rc) return callback(rc);
 
-    var card = new Uint8Array(b0_b3);
-    var data = new Uint8Array(b0_b3);
+    var card = b0_b3;
+    var data = b0_b3;
     var data_size = data[14] * 8;  // CC2: unit is 8 bytes.
     var CC0 = data[12];            // CC0: 0xE1 = NDEF
     var CC1 = data[13];            // CC1: version of this Type 2 tag spec.
@@ -93,7 +93,7 @@ TT2.prototype.read = function(device, cb) {
 
       device.read_block(block, function(rc, bn) {
         if (rc) return callback(rc);
-        card = UTIL_concat(card, new Uint8Array(bn));
+        card = UTIL_concat(card, bn);
         return poll_block(card, block + 4, poll_n);
       });
     }

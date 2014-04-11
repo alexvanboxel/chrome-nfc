@@ -3,7 +3,7 @@ function ACR122(dev) {
   this.usb = dev;
   this.ccid = new CCID(dev);
 
-  this.command = function (adpu, callback) {
+  this.command = function (adpu, cntx) {
 
     if (adpu.getCmdType() == 1) {
 
@@ -17,7 +17,7 @@ function ACR122(dev) {
       pseudo[4] = payload.length;                   //   Lc (Number of Bytes to send)
 
       console.log(UTIL_fmt(">>> ACR122 >>> Pseudo PN53x | Class = FF | INS = 00 | P1 = 00 | P2 = 00 | Lc = " + payload.length + " | " + UTIL_BytesToHex(payload)));
-      self.ccid.PC_TO_RDR_Escape(UTIL_concat(pseudo, payload), callback);
+      self.ccid.PC_TO_RDR_Escape(UTIL_concat(pseudo, payload), cntx);
     }
   }
 
