@@ -179,7 +179,6 @@ function usbDriver(usbHandle, spec) {
   pub.registerClient = registerClient;
   pub.deregisterClient = deregisterClient;
   pub.writeFrame = writeFrame;
-  pub.publishFrame = publishFrame;
   pub.close = close;
   return pub;
 }

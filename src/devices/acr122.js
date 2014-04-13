@@ -1,12 +1,12 @@
-function ACR122(dev) {
+function ACR122(usbDriver) {
 
   // TEMP
   this.vendorId = 0x072f;
   this.productId = 0x2200;
 
   var self = this;
-  this.usb = dev;
-  this.ccid = new CCID(dev);
+  this.usb = usbDriver;
+  this.ccid = CCID(usbDriver);
 
   this.command = function (adpu, cntx) {
 

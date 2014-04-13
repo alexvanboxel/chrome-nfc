@@ -1,4 +1,4 @@
-function SCL3711(dev) {
+function SCL3711(usbDriver) {
 
   // TEMP
   this.vendorId = 0x04e6;
@@ -6,8 +6,8 @@ function SCL3711(dev) {
   ;
 
   var self = this;
-  this.usb = dev;
-  this.ccid = new CCID(dev);
+  this.usb = usbDriver;
+  this.ccid = CCID(usbDriver);
 
   this.command = function (adpu, cntx) {
 
@@ -33,7 +33,7 @@ function SCL3711(dev) {
       chksum[1] = 0x00;
 
       console.log(UTIL_fmt(">>> SCL3711 >>> 00 00 FF FF FF | DCSlen = XX XX | LenCheckSum = XX | " + UTIL_BytesToHex(payload) + " | CheckSum = XX XX"));
-      self.usb.writeFrame(UTIL_concat(UTIL_concat(header, payload), chksum).buffer);
+      self.ccid.PC_TO_RDR_Raw(UTIL_concat(UTIL_concat(header, payload), chksum),cntx);
     }
 
 

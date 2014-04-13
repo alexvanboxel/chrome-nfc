@@ -41,62 +41,7 @@ function usbSCL3711() {
 
   // TODO: CCID
   this.nfcreader = null;
-
-  this. strerror = function(errno) {
-    var err = {
-      0x01: "time out, the target has not answered",
-      0x02: "checksum error during rf communication",
-      0x03: "parity error during rf communication",
-      0x04: "erroneous bit count in anticollision",
-      0x05: "framing error during mifare operation",
-      0x06: "abnormal bit collision in 106 kbps anticollision",
-      0x07: "insufficient communication buffer size",
-      0x09: "rf buffer overflow detected by ciu",
-      0x0a: "rf field not activated in time by active mode peer",
-      0x0b: "protocol error during rf communication",
-      0x0d: "overheated - antenna drivers deactivated",
-      0x0e: "internal buffer overflow",
-      0x10: "invalid command parameter",
-      0x12: "unsupported command from initiator",
-      0x13: "format error during rf communication",
-      0x14: "mifare authentication error",
-      0x18: "not support NFC secure",
-      0x19: "i2c bus line is busy",
-      0x23: "wrong uid check byte (14443-3)",
-      0x25: "command invalid in current dep state",
-      0x26: "operation not allowed in this configuration",
-      0x27: "not acceptable command due to context",
-      0x29: "released by initiator while operating as target",
-      0x2a: "card ID does not match",
-      0x2b: "the card previously activated has disapperaed",
-      0x2c: "Mismatch between NFCID3 initiator and target in DEP 212/424 kbps",
-      0x2d: "Over-current event has been detected",
-      0x2e: "NAD missing in DEP frame",
-      0x2f: "deselected by initiator while operating as target",
-      0x31: "initiator rf-off state detected in passive mode",
-      0x7F: "pn53x application level error"
-    };
-
-    if (errno in err) {
-      return "[" + errno + "] " + err[errno];
-    } else {
-      return "Unknown error: " + errno;
-    }
-  };
-
 }
-
-// Notify callback for every frame received.
-usbSCL3711.prototype.notifyFrame = function(cb) {
-  if (this.rxframes.length != 0) {
-    console.log("Notify FRAME , already has data");
-    // Already have frames; continue.
-    if (cb) window.setTimeout(cb, 0);
-  } else {
-    console.log("Notify FRAME , setting callback to receive");
-    this.rxcb = cb;
-  }
-};
 
 // Called by low level driver.
 // Return true if still interested.
@@ -114,21 +59,6 @@ usbSCL3711.prototype.receivedFrame = function(frame) {
   return true;
 };
 
-// Return oldest frame. Throw if none.
-usbSCL3711.prototype.readFrame = function() {
-  if (this.rxframes.length == 0) throw 'rxframes empty!' ;
-
-  var frame = this.rxframes.shift();
-  console.log("Reading FRAME");
-  return frame;
-};
-
-
-// Wrap data into frame, queue for sending.
-usbSCL3711.prototype.write = function(data) {
-  this.dev.writeFrame(data);
-};
-
 usbSCL3711.prototype.ccid_read = function (timeout, cb, cntx) {
   if (!this.dev) {
     cb(1);
@@ -138,6 +68,27 @@ usbSCL3711.prototype.ccid_read = function (timeout, cb, cntx) {
   var tid = null;  // timeout timer id.
   var callback = cb;
   var self = this;
+
+  // Return oldest frame. Throw if none.
+  var readFrame = function() {
+    if (self.rxframes.length == 0) throw 'rxframes empty!' ;
+
+    var frame = self.rxframes.shift();
+    console.log("Reading FRAME");
+    return frame;
+  };
+
+  // Notify callback for every frame received.
+  var notifyFrame = function(cb) {
+    if (self.rxframes.length != 0) {
+      console.log("Notify FRAME , already has data");
+      // Already have frames; continue.
+      if (cb) window.setTimeout(cb, 0);
+    } else {
+      console.log("Notify FRAME , setting callback to receive");
+      self.rxcb = cb;
+    }
+  };
 
   // Schedule call to cb if not called yet.
   function schedule_cb(a, b) {
@@ -171,7 +122,7 @@ usbSCL3711.prototype.ccid_read = function (timeout, cb, cntx) {
     console.log("NEW Read: read_frame");
     if (!callback || !tid) return;  // Already done.
 
-    var f = new Uint8Array(self.readFrame());
+    var f = new Uint8Array(readFrame());
 
     // http://www.nxp.com/documents/user_manual/157830_PN533_um080103.pdf
     // Section 7.1 ACK frame.
@@ -183,7 +134,7 @@ usbSCL3711.prototype.ccid_read = function (timeout, cb, cntx) {
       f[4] == 0xff &&
       f[5] == 0x00) {
       // Expected positive ack, read more.
-      self.notifyFrame(read_frame);
+      notifyFrame(read_frame);
       return;  // wait for more.
     }
 
@@ -268,7 +219,7 @@ usbSCL3711.prototype.ccid_read = function (timeout, cb, cntx) {
   tid = window.setTimeout(read_timeout, 1000.0 * timeout);
 
   // Schedule read of first frame.
-  self.notifyFrame(read_frame);
+  notifyFrame(read_frame);
 };
 
 usbSCL3711.prototype.cntx_exchange = function (cmd, cntx) {
@@ -339,86 +290,6 @@ usbSCL3711.prototype.close = function() {
   }
 
   deselect_release(dev_manager_close);
-};
-
-/*
- *  Help to build the USB packet:
- *
- *  ACR122:
- *
- *  CCID header (10bytes)
- *
- *
- *  SCL3711:
- *    00  00  ff  ff  ff  len  len  ~len
- *    d4  cmd data ...
- *    dsc ~dsc
- */
-usbSCL3711.prototype.makeFrame = function(cmd, data) {
-  var r8 = new Uint8Array(data ? data : []);
-  // payload: 2 bytes cmd
-  var p8 = new Uint8Array(r8.length + 2);
-
-  var dcslen = r8.length + 2;  // [0xd4, cmd]
-
-  // header
-  if (this.dev.isACR122()) {
-    // acr122
-    var apdu_len = 5 /* header */ + 2 /* cmd */ + r8.length;
-    var c8 = new Uint8Array(10);             // CCID header
-    c8[0] = 0x6b;                            //   PC_to_RDR_Escape
-    c8[1] = (apdu_len >> 0) & 0xff;          //   LEN (little-endian)
-    c8[2] = (apdu_len >> 8) & 0xff;          //
-    c8[3] = (apdu_len >> 16) & 0xff;         //
-    c8[4] = (apdu_len >> 24) & 0xff;         //
-    c8[5] = 0x00;                            //   bSlot
-    c8[6] = 0x00;                            //   bSeq
-    c8[7] = 0x00;                            //   abRFU
-    c8[8] = 0x00;                            //   abRFU
-    c8[9] = 0x00;                            //   abRFU
-
-    var a8 = new Uint8Array(5);              // Pseudo-APDU
-    a8[0] = 0xFF;                            //   Class
-    a8[1] = 0x00;                            //   INS (fixed 0)
-    a8[2] = 0x00;                            //   P1 (fixed 0)
-    a8[3] = 0x00;                            //   P2 (fixed 0)
-    a8[4] = r8.length + 2;                   //   Lc (Number of Bytes to send)
-
-    h8 = UTIL_concat(c8, a8);
-  } else {
-    // scl3711
-    var h8 = new Uint8Array(8);  // header
-    h8[0] = 0x00;
-    h8[1] = 0x00;
-    h8[2] = 0xff;
-    h8[3] = 0xff;
-    h8[4] = 0xff;
-    h8[5] = dcslen >>> 8;
-    h8[6] = dcslen & 255;
-    h8[7] = 0x100 - ((h8[5] + h8[6]) & 255);  // length checksum
-  }
-
-  // cmd
-  p8[0] = 0xd4;
-  p8[1] = cmd;
-
-  // payload
-  var dcs = p8[0] + p8[1];
-  for (var i = 0; i < r8.length; ++i) {
-    p8[2 + i] = r8[i];
-    dcs += r8[i];
-  }
-
-  var chksum = null;
-  if (this.dev.isACR122()) {
-    chksum = new Uint8Array([]);
-  } else {
-    chksum = new Uint8Array(2);  // checksum: 2 bytes checksum at the end.
-    chksum[0] = 0x100 - (dcs & 255);  // data checksum
-    chksum[1] = 0x00;
-  }
-
-  return UTIL_concat(UTIL_concat(h8, p8), chksum).buffer;
 };
 
 
