@@ -27,8 +27,6 @@ function usbSCL3711() {
   this.dev = null;
   // Pick unique channel (within process..)
   this.cid = (++scl3711_id) & 0x00ffffff;
-  this.rxframes = [];
-  this.rxcb = null;
   this.onclose = null;
   this.detected_tag = null;   // TODO: move this to mifare_classic.js
   this.auth_key = null;       // TODO: move this to mifare_classic.js
@@ -42,193 +40,6 @@ function usbSCL3711() {
   // TODO: CCID
   this.nfcreader = null;
 }
-
-// Called by low level driver.
-// Return true if still interested.
-usbSCL3711.prototype.receivedFrame = function(frame) {
-  if (!this.rxframes) return false;  // No longer interested.
-
-  console.log("Receiveing FRAME from LOW LEVEL");
-  this.rxframes.push(frame);
-
-  // Callback self in case we were waiting.
-  var cb = this.rxcb;
-  this.rxcb = null;
-  if (cb) window.setTimeout(cb, 0);
-
-  return true;
-};
-
-usbSCL3711.prototype.ccid_read = function (timeout, cb, cntx) {
-  if (!this.dev) {
-    cb(1);
-    return;
-  }
-
-  var tid = null;  // timeout timer id.
-  var callback = cb;
-  var self = this;
-
-  // Return oldest frame. Throw if none.
-  var readFrame = function() {
-    if (self.rxframes.length == 0) throw 'rxframes empty!' ;
-
-    var frame = self.rxframes.shift();
-    console.log("Reading FRAME");
-    return frame;
-  };
-
-  // Notify callback for every frame received.
-  var notifyFrame = function(cb) {
-    if (self.rxframes.length != 0) {
-      console.log("Notify FRAME , already has data");
-      // Already have frames; continue.
-      if (cb) window.setTimeout(cb, 0);
-    } else {
-      console.log("Notify FRAME , setting callback to receive");
-      self.rxcb = cb;
-    }
-  };
-
-  // Schedule call to cb if not called yet.
-  function schedule_cb(a, b) {
-    console.log("NEW Read: schedule_cb");
-    if (tid) {
-      console.log("NEW Read: schedule_cb - clearing timer");
-      // Cancel timeout timer.
-      window.clearTimeout(tid);
-      tid = null;
-    }
-    var c = callback;
-    if (c) {
-      console.log("NEW Read: schedule_cb - call and clear");
-      callback = null;
-      window.setTimeout(function() { c(a, b); }, 0);
-    }
-  };
-
-  function read_timeout() {
-    if (!callback || !tid) return;  // Already done.
-
-    console.log(UTIL_fmt(
-        '[' + self.cid.toString(16) + '] timeout!'));
-
-    tid = null;
-
-    schedule_cb(-5 /* ERR_MSG_TIMEOUT */);
-  };
-
-  function read_frame() {
-    console.log("NEW Read: read_frame");
-    if (!callback || !tid) return;  // Already done.
-
-    var f = new Uint8Array(readFrame());
-
-    // http://www.nxp.com/documents/user_manual/157830_PN533_um080103.pdf
-    // Section 7.1 ACK frame.
-    if (f.length == 6 &&
-      f[0] == 0x00 &&
-      f[1] == 0x00 &&
-      f[2] == 0xff &&
-      f[3] == 0x00 &&
-      f[4] == 0xff &&
-      f[5] == 0x00) {
-      // Expected positive ack, read more.
-      notifyFrame(read_frame);
-      return;  // wait for more.
-    }
-
-    // Change the ACR122 response to SCL3711 format.
-    if (f.length > 10) {
-      if (f[0] == 0x80 /* RDR_to_PC_Datablock */) {
-        f = UTIL_concat(
-          new Uint8Array([0x00, 0x00, 0xff, 0x01, 0xff]),
-          new Uint8Array(f.subarray(10)));
-      } else if (f[0] == 0x83 /* RDR_to_PC_Escape */) {
-        f = UTIL_concat(
-          new Uint8Array([0x00, 0x00, 0xff, 0x01, 0xff]),
-          new Uint8Array(f.subarray(10)));
-      }
-    }
-
-    // TODO: implement NACK frame? Error frame?
-    // TODO: preamble and postamble frames?
-
-    // TODO: check data checksum?
-    // TODO: short cut. Will leave to callback to handle.
-    if (f.length == 7) {
-      if (f[5] == 0x90 &&
-        f[6] == 0x00) {
-        /* ACR122U - operation is success. */
-        schedule_cb(0, f.buffer);
-        return;
-      } else if (f[5] == 0x63 &&
-        f[6] == 0x00) {
-        /* ACR122U - operation is failed. */
-        schedule_cb(0xaaa, f.buffer);
-        return;
-      }
-    } else if (f.length > 6 &&
-      f[0] == 0x00 &&
-      f[1] == 0x00 &&
-      f[2] == 0xff &&
-      f[3] + f[4] == 0x100 /* header checksum */) {
-
-      // TODO: CHECK HERE FOR 9000
-
-      if (f[5] == 0xd5 &&
-        f[6] == 0x4b /* InListPassiveTarget reply */) {
-        var tags = cntx.popLayer().handler(f.subarray(5, f.length - 2));
-        // TODO: WE NEED TO GET KEEPING CONTEXT OUT OF THE IF STATEMENT
-        if (tags.length > 0) {
-          var tagData = tags[0];
-          if (tagData.SENS_RES[0] == 0x00 && tagData.SENS_RES[1] == 0x44) {
-            console.log("DEBUG: found Mifare Ultralight (106k type A)");
-            // TODO: VERY BAD WAY TO KEEP CONTEXT
-            self.detected_tag = "Mifare Ultralight";
-            self.authed_sector = null;
-            self.auth_key = null;
-            schedule_cb(0, "tt2" /* new Uint8Array(f.subarray(11, f.length)).buffer */);
-            return;
-          }
-          else if (tagData.SENS_RES[0] == 0x00 && tagData.SENS_RES[1] == 0x04) {
-            console.log("DEBUG: found Mifare Classic 1K (106k type A)");
-            // TODO: VERY BAD WAY TO KEEP CONTEXT
-            self.detected_tag = "Mifare Classic 1K";
-            self.authed_sector = null;
-            self.auth_key = null;
-            schedule_cb(0, "mifare_classic" /* new Uint8Array(f.subarray(11, f.length)).buffer */);
-            return;
-          }
-        }
-      }
-      else if(f[5] == 0xd5) {
-        var data = cntx.popLayer().handler(f.subarray(5, f.length - 2));
-        schedule_cb(0, data);
-      }
-      else {
-        throw {type: "ReadLoop", message: "Unexpected response."}
-      }
-    }
-
-    // Not sure what kind of reply this is. Report w/ error.
-    schedule_cb(0x888, f.buffer);
-  };
-
-  // Start timeout timer.
-  tid = window.setTimeout(read_timeout, 1000.0 * timeout);
-
-  // Schedule read of first frame.
-  notifyFrame(read_frame);
-};
-
-usbSCL3711.prototype.cntx_exchange = function (cmd, cntx) {
-  cmd.debug();
-  cntx.pushLayer(cmd.response);
-  this.nfcreader.command(cmd,cntx);
-  this.ccid_read(cntx.getTimeout(), cntx.getFinalCallback(), cntx);
-};
-
 
 // PASS-THRUE
 usbSCL3711.prototype.publicAuthentication = function(block, cb) {
@@ -273,10 +84,10 @@ usbSCL3711.prototype.close = function() {
 
   /* deselect and release target if any tag is associated. */
   function deselect_release(cb) {
-    self.cntx_exchange(PN53x.InDeselect(),cmdCntx({timeout:1}).setCallback(
-      function(rc, data) {
-        self.cntx_exchange(PN53x.InRelease(),cmdCntx({timeout:1}).setCallback(
-          function(rc, data) {
+    self.nfcreader.command(PN53x.InDeselect(),cmdCntx({timeout:1}).setCallback(
+      function() {
+        self.nfcreader.command(PN53x.InRelease(),cmdCntx({timeout:1}).setCallback(
+          function() {
           }));
       }));
   }
@@ -299,12 +110,37 @@ usbSCL3711.prototype.wait_for_passive_target = function(timeout, cb) {
 
   if (!cb) cb = defaultCallback;
 
+  var tagDetector = function(tags) {
+    if (tags.length > 0) {
+      var tagData = tags[0];
+      if (tagData.SENS_RES[0] == 0x00 && tagData.SENS_RES[1] == 0x44) {
+        console.log("DEBUG: found Mifare Ultralight (106k type A)");
+        // TODO: VERY BAD WAY TO KEEP CONTEXT
+        self.detected_tag = "Mifare Ultralight";
+        self.authed_sector = null;
+        self.auth_key = null;
+        cb(0,"tt2");
+        return;
+      }
+      else if (tagData.SENS_RES[0] == 0x00 && tagData.SENS_RES[1] == 0x04) {
+        console.log("DEBUG: found Mifare Classic 1K (106k type A)");
+        // TODO: VERY BAD WAY TO KEEP CONTEXT
+        self.detected_tag = "Mifare Classic 1K";
+        self.authed_sector = null;
+        self.auth_key = null;
+        cb(0,"mifare_classic");
+        return;
+      }
+    }
+    cb();
+  }
+
   if (self.dev.isACR122()) {
-    self.nfcreader.acr122_set_timeout(self,timeout, function(rc, data) {
-      self.cntx_exchange(PN53x.InListPassiveTarget(),cmdCntx({callback:cb,timeout:timeout}));
+    self.nfcreader.acr122_set_timeout(self,timeout, function() {
+      self.nfcreader.command(PN53x.InListPassiveTarget(),cmdCntx({callback:tagDetector,timeout:timeout}));
     });
   } else {
-    self.cntx_exchange(PN53x.InListPassiveTarget(),cmdCntx({callback:cb,timeout:timeout}));
+    self.nfcreader.command(PN53x.InListPassiveTarget(),cmdCntx({callback:tagDetector,timeout:timeout}));
   }
 };
 
@@ -321,8 +157,8 @@ usbSCL3711.prototype.read_block = function(block, cb) {
   u8[0] = 0x30;                // READ command
   u8[1] = block;               // block number
 
-  self.apdu(u8, function (rc, data) {
-      callback(rc, data);
+  self.apdu(u8, function (data) {
+      callback(data);
   });
 }
 
@@ -349,10 +185,10 @@ usbSCL3711.prototype.emulate_tag = function (data, timeout, cb) {
           ret = UTIL_concat(ret, new Uint8Array(16 - ret.length));
         }
 
-        self.cntx_exchange(PN53x.TgResponseToInitiator({TgResponse: ret}), cmdCntx({timeout: TIMEOUT}).setCallback(
+        self.nfcreader.command(PN53x.TgResponseToInitiator({TgResponse: ret}), cmdCntx({timeout: TIMEOUT}).setCallback(
           function () {
-            self.cntx_exchange(PN53x.TgGetInitiatorCommand({}), cmdCntx({timeout: TIMEOUT}).setCallback(
-              function (rc,data) {
+            self.nfcreader.command(PN53x.TgGetInitiatorCommand({}), cmdCntx({timeout: TIMEOUT}).setCallback(
+              function (data) {
                 HANDLE_TT2(data);
               }
             ));
@@ -377,7 +213,7 @@ usbSCL3711.prototype.emulate_tag = function (data, timeout, cb) {
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Felica
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // ID3
       0x00, 0x00]);
-    self.cntx_exchange(PN53x.TgInitAsTarget({Data: req}), cmdCntx({timeout: TIMEOUT}).setCallback(
+    self.nfcreader.command(PN53x.TgInitAsTarget({Data: req}), cmdCntx({timeout: TIMEOUT}).setCallback(
       function (rc,data) {
         HANDLE_TT2(data.InitiatorCommand);
       }
@@ -385,15 +221,11 @@ usbSCL3711.prototype.emulate_tag = function (data, timeout, cb) {
   }
 
   if (self.dev.isACR122()) {
-    self.nfcreader.setPiccOperatingParameter(self, 0x00, function (rc, data) {
+    self.nfcreader.setPiccOperatingParameter(self, 0x00, function () {
       // RFCA:off and RF:off
-      self.cntx_exchange(PN53x.RFConfiguration({CfgItem: 0x01, ConfigurationData: [0x00]}), cmdCntx({timeout: TIMEOUT}).setCallback(
+      self.nfcreader.command(PN53x.RFConfiguration({CfgItem: 0x01, ConfigurationData: [0x00]}), cmdCntx({timeout: TIMEOUT}).setCallback(
         function () {
-          self.nfcreader.acr122_set_timeout(self, timeout, function (rc) {
-            if (rc != 0) {
-              callback(rc);
-              return;
-            }
+          self.nfcreader.acr122_set_timeout(self, timeout, function () {
             TgInitAsTarget();
           });
         }));
@@ -421,8 +253,8 @@ usbSCL3711.prototype.write_block = function(blk_no, data, cb, write_inst) {
     u8[2 + i] = data[i];
   }
 
-  this.apdu(u8, function(rc, dummy) {
-    callback(rc);
+  this.apdu(u8, function() {
+    callback(0);
   });
 }
 
@@ -430,7 +262,7 @@ usbSCL3711.prototype.write_block = function(blk_no, data, cb, write_inst) {
 usbSCL3711.prototype.apdu = function(req, cb) {
   if (!cb) cb = defaultCallback;
   var self = this;
-  self.cntx_exchange(PN53x.InDataExchange({DataOut: req}),cmdCntx({callback:cb,timeout:3000}));
+  self.nfcreader.command(PN53x.InDataExchange({DataOut: req}),cmdCntx({callback:cb,timeout:3000}));
 
 //  var u8 = new Uint8Array(this.makeFrame(0x40,
 //                                         UTIL_concat([0x01/*Tg*/], req)));

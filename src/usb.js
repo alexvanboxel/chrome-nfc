@@ -35,7 +35,7 @@ function usbDriver(usbHandle, spec) {
   var readLoop = function () {
     if (!usbHandle) return;
 
-    console.log(UTIL_fmt('ReadLoop: Entering readLoop'));
+    console.log(UTIL_fmt('||| USB ||| Entering BULK IN read loop'));
 
     var self = this;
     chrome.usb.bulkTransfer(
@@ -48,12 +48,17 @@ function usbDriver(usbHandle, spec) {
             var u8 = new Uint8Array(x.data);
             console.log(UTIL_fmt('<<< USB <<< ' + UTIL_BytesToHex(u8)));
 
-            publishFrame(x.data);
-
             // Read more.
             window.setTimeout(function () {
               readLoop();
             }, 0);
+// TODO : Maybe do try/catch...
+            publishFrame(x.data);
+
+//            // Read more.
+//            window.setTimeout(function () {
+//              readLoop();
+//            }, 0);
           } else {
             console.log(UTIL_fmt('ReadLoop: tiny reply!'));
             console.log(x);
