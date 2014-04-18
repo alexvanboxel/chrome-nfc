@@ -135,7 +135,7 @@ function NFC() {
         }
 
         tag.read_logic(device, logic_block, cnt, function(data) {
-          callback(0, data);
+          callback(data);
         });
       });
     },

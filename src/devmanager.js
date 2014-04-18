@@ -175,7 +175,7 @@ devManager.prototype.open = function(which, who, cb) {
   // Make sure we have enumerated devices.
   this.enumerate(function() {
     var dev = self.devs[which];
-    if (dev) dev.registerClient(who);
+// TODO remove    if (dev) dev.registerClient(who);
     if (cb) { cb(dev || null); }
   });
 };

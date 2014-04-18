@@ -1,29 +1,66 @@
 var cmdCntx = function (spec) {
 
   var stack = [];
-  var that = {};
-  var callback = spec.callback;
+  var pub = {};
+  spec = spec || {};
+  var onSuccess = spec.callback || function (f) {
+    console.error(UTIL_fmt("!!! onSuccess !!! Default callback for Command Context, received " + JSON.stringify(f)));
+  };
+  var onError = spec.onError || function (e) {
+    console.error(UTIL_fmt("!!! onError !!! Default callback for Command Context, received " + JSON.stringify(e)));
+  };
   var timeout = spec.timeout;
 
-  that.pushLayer = function (handler) {
+  pub.pushHandle = function (handle) {
     stack.push({
-        handler : handler
+        handle: handle
       }
     );
   };
-  that.popLayer = function () {
-    return stack.pop();
+  pub.pushLayer = function (layerContext) {
+    stack.push(layerContext);
   };
-  that.getFinalCallback = function() {
-    return callback;
+  pub.popHandle = function () {
+    return stack.pop().handle;
   };
-  that.getTimeout = function() {
+  pub.getFinalCallback = function () {
+    return onSuccess;
+  };
+  pub.getTimeout = function () {
     return timeout;
   };
-  that.setCallback = function(cb) {
-    callback = cb;
+  pub.setCallback = function (cb) {
+    onSuccess = cb;
+    return this;
+  }
+  pub.onError = function (cb) {
+    onError = cb;
     return this;
   }
 
-  return that;
+  /**
+   *
+   */
+  pub.up = function (value) {
+    if (stack.length === 0) {
+      try {
+        onSuccess(value);
+      }
+      catch (e) {
+        console.error(e);
+      }
+    }
+    else {
+      var out = null;
+      try {
+        var layerContext = stack.pop();
+        out = layerContext.handle(value, layerContext, pub);
+        pub.up(out);
+      }
+      catch (e) {
+        onError(e);
+      }
+    }
+  }
+  return pub;
 };

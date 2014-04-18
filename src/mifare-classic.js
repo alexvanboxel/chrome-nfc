@@ -161,10 +161,8 @@ MifareClassic.prototype.read_physical = function(device, phy_block, cnt, cb) {
 
   function read_next(phy_block) {
     var blk_no = phy_block;
-    dev.publicAuthentication(blk_no, function(rc, data) {
-      if (rc) return callback(rc);
-      dev.read_block(blk_no, function(rc, bn) {
-        if (rc) return callback(rc);
+    dev.publicAuthentication(blk_no, function() {
+      dev.read_block(blk_no, function(bn) {
 
         // copy KEY A with auth_key from device.
         if ((blk_no % 4) == 3) {
@@ -358,12 +356,10 @@ MifareClassic.prototype.write_physical = function(device, block_no, key,
     data = UTIL_concat(data, new Uint8Array(16 - data.length));
   }
 
-  function authenticationCallback (rc, dummy) {
-    if (rc) return callback(rc);
+  function authenticationCallback () {
 
     var block_data = data.subarray(0, 16);
-    dev.write_block(blk_no, block_data, function(rc) {
-      if (rc) return callback(rc);
+    dev.write_block(blk_no, block_data, function() {
       self.write_physical(dev, blk_no + 1, key, data.subarray(16), callback);
     }, self.WRITE_COMMAND);
   }
@@ -419,12 +415,10 @@ MifareClassic.prototype.write_logic = function(device, logic_block,
     self.write_physical(dev, self.log2phy(blk_no), null,
                         data.subarray(0, 16),
                         function(rc) {
-      if (rc) return callback(rc);
 
       // update the corresponding GPB to 0x00.
       var gpb_phy = self.log2sec(blk_no) * 4 + 3;
-      dev.read_block(gpb_phy, function(rc, gpb_data) {
-        if (rc) return callback(rc);
+      dev.read_block(gpb_phy, function(gpb_data) {
         gpb_data = self.copy_auth_keys(gpb_data, dev);
 
         if (gpb_phy == 3)
@@ -432,7 +426,7 @@ MifareClassic.prototype.write_logic = function(device, logic_block,
         else
           gpb_data[0x9] = 0x40;  // non-first GPB: MA=1.
 
-        dev.write_block(gpb_phy, gpb_data, function(rc) {
+        dev.write_block(gpb_phy, gpb_data, function() {
           // move to next block
           blk_no = blk_no + 1;
           data = data.subarray(16);

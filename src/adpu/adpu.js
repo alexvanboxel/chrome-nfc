@@ -117,6 +117,8 @@ PN53x.InListPassiveTarget = function () {
 PN53x.InDeselect = function () {
   var Type = 1;
   var Tg = 0x01;
+
+  var self = this;
   var that = {}
 
   that.getCmdType = function () {
@@ -142,7 +144,9 @@ PN53x.InRelease = function () {
   var Type = 1;
   var Tg = 0x01;
 
+  var self = this;
   var that = {}
+
 
   that.getCmdType = function () {
     return Type;
@@ -167,7 +171,9 @@ PN53x.InDataExchange = function (spec) {
   var Tg = 0x01;
   var DataOut = spec.DataOut;
 
-  var that = {};
+  var self = this;
+  var that = {}
+
 
   that.getCmdType = function () {
     return Type;
@@ -203,7 +209,9 @@ PN53x.TgInitAsTarget = function (spec) {
   var Type = 1;
   var Data = spec.Data;
 
+  var self = this;
   var that = {}
+
 
   that.getCmdType = function () {
     return Type;
@@ -238,7 +246,9 @@ PN53x.TgInitAsTarget = function (spec) {
 PN53x.TgGetInitiatorCommand = function () {
   var Type = 1;
 
+  var self = this;
   var that = {}
+
 
   that.getCmdType = function () {
     return Type;
@@ -273,7 +283,9 @@ PN53x.TgResponseToInitiator = function (spec) {
   var Type = 1;
   var TgResponse = spec.TgResponse;
 
-  var that = {};
+  var self = this;
+  var that = {}
+
 
   that.getCmdType = function () {
     return Type;
@@ -310,7 +322,9 @@ PN53x.RFConfiguration = function (spec) {
   var CfgItem = spec.CfgItem;
   var ConfigurationData = spec.ConfigurationData;
 
-  var that = {};
+  var self = this;
+  var that = {}
+
 
   that.getCmdType = function () {
     return Type;
