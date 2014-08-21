@@ -27,21 +27,21 @@ def print_errors(errors, js_files):
 
 
 JS_FILES = [
-  'src/b64.js',
+  'src/util/b64.js',
   'src/adpu/adpu.js',
   'src/ccid.js',
   'src/devices/acr122.js',
   'src/devices/scl3711.js',
-  'src/mifare-classic.js',
+  'src/tech//mifare-classic.js',
   'src/cmdcntx.js',
   'src/ndef.js',
   'src/nfc.js',
   'src/devmanager.js',
   'src/scl3711.js',
-  'src/sha256.js',
-  'src/tt2.js',
+  'src/util/sha256.js',
+  'src/tech/tt2.js',
   'src/usb.js',
-  'src/util.js'
+  'src/util//util.js'
 ]
 
 def main():
