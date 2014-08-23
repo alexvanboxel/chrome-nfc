@@ -24,6 +24,11 @@
 function devManager() {
   this.devs = [];
   this.enumerators = [];
+
+
+  this.deviceHandler = [];
+  //
+  this.deviceDrivers = [];
 }
 
 // Remove device from list.
@@ -83,15 +88,15 @@ devManager.prototype.closeAll = function() {
 devManager.prototype.enumerate = function(cb) {
   var self = this;
 
-  function enumerated(d, id) {
+  function enumerated(usbDevice, driver) {
     var nDevice = 0;
 
-    if (d && d.length != 0) {
-      console.log(UTIL_fmt('Enumerated ' + d.length + ' devices'));
-      console.log(d);
-      nDevice = d.length;
+    if (usbDevice && usbDevice.length != 0) {
+      console.log(UTIL_fmt('Enumerated ' + usbDevice.length + ' devices'));
+      console.log(usbDevice);
+      nDevice = usbDevice.length;
     } else {
-      if (d) {
+      if (usbDevice) {
         console.log('No devices found');
       } else {
         console.log('Lacking permission?');
@@ -111,10 +116,10 @@ devManager.prototype.enumerate = function(cb) {
             chrome.usb.claimInterface(dev, 0, function(result) {
               console.log(UTIL_fmt('claimed'));
               console.log(dev);
-              self.devs.push(usbDriver(dev, id));
+              self.devs.push(driver.factory(usbDriver(dev, driver)));
             });
           }, 0);
-      })(d[i]);
+      })(usbDevice[i]);
     }
 
     var u8 = new Uint8Array(4);
@@ -134,6 +139,29 @@ devManager.prototype.enumerate = function(cb) {
     }
   };
 
+  /**
+   * Loop through the drivers and try to find a connected device.
+   * @param i
+   */
+  function findFirstReader(i) {
+    if(i < self.deviceDrivers.length) {
+      driver = self.deviceDrivers[i];
+      console.log('Searching for ' + driver.name);
+      chrome.usb.findDevices({'vendorId': driver.vendorId, 'productId': driver.productId},
+        function (d) {
+          if (d && d.length != 0) {
+            enumerated(d, driver);
+          } else {
+            findFirstReader(i+1);
+          }
+        }
+      );
+    }
+    else {
+      console.log('No devices found for supported drivers.');
+    }
+  }
+
   if (this.devs.length != 0) {
     // Already have devices. Report number right away.
     var u8 = new Uint8Array(4);
@@ -149,23 +177,9 @@ devManager.prototype.enumerate = function(cb) {
     this.enumerators.push(cb);
 
     if (first) {
-      // Only first requester calls actual low level.
       window.setTimeout(function() {
-          chrome.usb.findDevices({'vendorId': 0x04e6, 'productId': 0x5591},
-            function (d) {
-              if (d && d.length != 0) {
-                enumerated(d, {'vendorId': 0x04e6, 'productId': 0x5591});
-              } else {
-                chrome.usb.findDevices(
-                    {'vendorId': 0x072f, 'productId': 0x2200},
-                    function (d) {
-                      if (d && d.length != 0) {
-                        enumerated(d, {'vendorId': 0x072f, 'productId': 0x2200});
-                      }
-                    });
-              }
-          });
-      }, 0);
+        findFirstReader(0);
+      },0);
     }
   }
 };
@@ -200,6 +214,10 @@ devManager.prototype.close = function(singledev, who) {
   }
 };
 
+devManager.prototype.registerDriver = function(driverSpec) {
+  this.deviceDrivers.push(driverSpec);
+}
+
 // For console interaction.
 //  rc   - a number.
 //  data - an ArrayBuffer.
@@ -214,3 +232,27 @@ var defaultCallback = function(rc, data) {
 // Singleton tracking available devices.
 var dev_manager = new devManager();
 
+
+
+
+
+// We register the drivers here now. TODO: Need to be moved to the corresponding driver
+// be the compilation step need do be done in the correct order for this to work.
+// This makes the library extensible
+dev_manager.registerDriver({
+  name : "SCL3711",
+  vendorId : 0x04e6,
+  productId : 0x5591,
+  factory : function(usbDriver) {
+    return new SCL3711(usbDriver);
+  }
+});
+
+dev_manager.registerDriver({
+  name : "ACR122",
+  vendorId : 0x072f,
+  productId : 0x2200,
+  factory : function(usbDriver) {
+    return new ACR122(usbDriver);
+  }
+});
