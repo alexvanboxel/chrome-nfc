@@ -165,3 +165,8 @@ ACR122.prototype.setPiccOperatingParameter = function (rwloop, param, cb) {
   console.log(UTIL_fmt(">>> ACR122 >>> Set PICC Operating Parameter to " + param + " | Class = FF | INS = 00 | P1 = 51 | P2 = " + param + " | Lc = 00"));
   self.ccid.PC_TO_RDR_Escape(new Uint8Array([0xff, 0x00, 0x41, param, 0x00]),cmdCntx({timeout:100}).setCallback(cb));
 };
+
+
+ACR122.prototype.isACR122 = function() { return true; };
+
+

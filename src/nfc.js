@@ -65,21 +65,21 @@ function NFC() {
      *  found devices. It is an empty array if no NFC device is found.
      */
     "findDevices": function(cb) {
-      var device = new usbSCL3711();
+      var hal = new NfcHal();
       window.setTimeout(function() {
-        device.open(0, function(rc) {
+        hal.open(0, function(rc) {
           if (rc) {
-            console.log("NFC.device.open() = " + rc);
+            console.log("NFC.hal.open() = " + rc);
             cb([]);
             return rc;
           }
-          // cache device info
-          device.vendorId = device.nfcreader.vendorId;
-          device.productId = device.nfcreader.productId;
-          //device.vendorId = device.dev.dev.vendorId;
-          //device.productId = device.dev.dev.productId;
+          // cache hal info
+          hal.vendorId = hal.nfcreader.vendorId;
+          hal.productId = hal.nfcreader.productId;
+          //hal.vendorId = hal.dev.dev.vendorId;
+          //hal.productId = hal.dev.dev.productId;
 
-          cb([device]);
+          cb([hal]);
         });
       }, 1000);
     },

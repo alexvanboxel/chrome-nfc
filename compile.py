@@ -37,7 +37,7 @@ JS_FILES = [
   'src/ndef.js',
   'src/nfc.js',
   'src/devmanager.js',
-  'src/scl3711.js',
+  'src/nfchal.js',
   'src/util/sha256.js',
   'src/tech/tt2.js',
   'src/usb.js',

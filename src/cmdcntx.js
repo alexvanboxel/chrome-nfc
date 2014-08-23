@@ -39,7 +39,8 @@ var cmdCntx = function (spec) {
   }
 
   /**
-   *
+   *  Pop the complete context till the end. The last callback on the stack should be
+   *  the receiving callback. The others are part of the layering.
    */
   pub.up = function (value) {
     if (stack.length === 0) {

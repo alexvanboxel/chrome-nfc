@@ -11,7 +11,7 @@ function SCL3711(usbDriver) {
 
   this.command = function (adpu, cntx) {
 
-    if (adpu.Type == 1) {
+    if (adpu.getCmdType() == 1) {
 
       var payload = command.make();
 
@@ -42,3 +42,5 @@ function SCL3711(usbDriver) {
 
 
 }
+
+SCL3711.prototype.isACR122 = function() { return false; }
