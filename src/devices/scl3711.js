@@ -7,40 +7,28 @@ function SCL3711(usbDriver) {
 
   var self = this;
   this.usb = usbDriver;
-  this.ccid = CCID(usbDriver);
+  this.pn533 = pn533(usbDriver);
 
   this.command = function (adpu, cntx) {
+    adpu.debug();
+    cntx.pushHandle(adpu.response);
 
     if (adpu.getCmdType() == 1) {
-
-      var payload = command.make();
-
-      var dcslen = payload.length;
-
-      // header
-      var header = new Uint8Array(8);  // header
-      header[0] = 0x00;
-      header[1] = 0x00;
-      header[2] = 0xff;
-      header[3] = 0xff;
-      header[4] = 0xff;
-      header[5] = dcslen >>> 8;
-      header[6] = dcslen & 255;
-      header[7] = 0x100 - ((header[5] + header[6]) & 255);  // length checksum
-
-      var chksum = new Uint8Array(2);  // checksum: 2 bytes checksum at the end.
-      chksum[0] = 0x100 - (dcs & 255);  // data checksum
-      chksum[1] = 0x00;
-
-      console.log(UTIL_fmt(">>> SCL3711 >>> 00 00 FF FF FF | DCSlen = XX XX | LenCheckSum = XX | " + UTIL_BytesToHex(payload) + " | CheckSum = XX XX"));
-      self.ccid.PC_TO_RDR_Raw(UTIL_concat(UTIL_concat(header, payload), chksum),cntx);
+      self.pn533.PC_TO_PN533(adpu.make(), cntx);
     }
-
-
   }
-
-
 
 }
 
 SCL3711.prototype.isACR122 = function() { return false; }
+
+
+// Register the driver with the Device Manager
+dev_manager.registerDriver({
+  name : "SCL3711",
+  vendorId : 0x04e6,
+  productId : 0x5591,
+  factory : function(usbDriver) {
+    return new SCL3711(usbDriver);
+  }
+});

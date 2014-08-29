@@ -36,8 +36,8 @@ function NFC() {
   // TODO: move tag.js
   function TAG() {
     return {
-      "tt2": new TT2(),
-      "mifare_classic": new MifareClassic()
+      "mifare-ultralight": new tagMifareUltralight(),
+      "mifare-classic": new tagMifareClassic()
     };
   }
 
@@ -65,7 +65,7 @@ function NFC() {
      *  found devices. It is an empty array if no NFC device is found.
      */
     "findDevices": function(cb) {
-      var hal = new NfcHal();
+      var hal = new NfcAdapter();
       window.setTimeout(function() {
         hal.open(0, function(rc) {
           if (rc) {
@@ -251,27 +251,6 @@ function NFC() {
           callback(rc);
         });
       });
-    },
-
-    /*
-     *  Emulate as a tag.
-     *
-     *  'content' is a dictionary containing structures to write. Supports:
-     *    ['ndef']: an array of NDEF dictionary. Will be written as a tag
-     *              type 2.
-     *
-     *  cb(0) is called if success.
-     *  timeout is optional.
-     */
-    "emulate_tag": function(device, content, cb, timeout) {
-      if (timeout == undefined) timeout = 9999999999;
-      wait_for_passive_target(device, function(rc, tag_type) {
-        var tt2 = new TT2();
-        var ndef_obj = construct_ndef_obj(content["ndef"]);
-        tt2.emulate(device, ndef_obj, timeout, function(rc) {
-          cb(rc);
-        });
-      }, timeout);
     }
   };
 
