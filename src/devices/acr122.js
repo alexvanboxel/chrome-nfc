@@ -170,3 +170,12 @@ ACR122.prototype.setPiccOperatingParameter = function (rwloop, param, cb) {
 ACR122.prototype.isACR122 = function() { return true; };
 
 
+// Register the driver with the Device Manager
+dev_manager.registerDriver({
+  name : "ACR122",
+  vendorId : 0x072f,
+  productId : 0x2200,
+  factory : function(usbDriver) {
+    return new ACR122(usbDriver);
+  }
+});

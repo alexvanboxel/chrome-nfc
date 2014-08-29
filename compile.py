@@ -28,27 +28,34 @@ def print_errors(errors, js_files):
 
 JS_FILES = [
   'src/util/b64.js',
+  'src/util/util.js',
+  'src/util/sha256.js',
+  'src/adpu/command-base.js',
+  'src/adpu/acr.js',
   'src/adpu/adpu.js',
-  'src/ccid.js',
-  'src/devices/acr122.js',
-  'src/devices/scl3711.js',
-  'src/tech//mifare-classic.js',
+  'src/tech/tag-base.js',
+  'src/tech/tag-type2.js',
+  'src/tech/mifare-classic.js',
+  'src/tech/mifare-ultralight.js',
+  'src/tech/mifare-ultralightc.js',
   'src/cmdcntx.js',
   'src/ndef.js',
   'src/nfc.js',
   'src/devmanager.js',
-  'src/nfchal.js',
-  'src/util/sha256.js',
-  'src/tech/tt2.js',
+  'src/nfc-adapter.js',
+  'src/pn533.js',
+  'src/ccid.js',
   'src/usb.js',
-  'src/util//util.js'
+  'src/devices/acr122.js',
+  'src/devices/scl3711.js'
 ]
 
 def main():
   print('Compiling JavaScript code.')
 
   params = [
-      ('compilation_level', 'SIMPLE_OPTIMIZATIONS'),
+      ('compilation_level', 'WHITESPACE_ONLY'),
+      ('formatting', 'pretty_print'),
       ('language', 'ECMASCRIPT5'),
       ('output_format', 'json'),
       ('output_info', 'statistics'),

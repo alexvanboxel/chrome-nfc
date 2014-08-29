@@ -232,27 +232,3 @@ var defaultCallback = function(rc, data) {
 // Singleton tracking available devices.
 var dev_manager = new devManager();
 
-
-
-
-
-// We register the drivers here now. TODO: Need to be moved to the corresponding driver
-// be the compilation step need do be done in the correct order for this to work.
-// This makes the library extensible
-dev_manager.registerDriver({
-  name : "SCL3711",
-  vendorId : 0x04e6,
-  productId : 0x5591,
-  factory : function(usbDriver) {
-    return new SCL3711(usbDriver);
-  }
-});
-
-dev_manager.registerDriver({
-  name : "ACR122",
-  vendorId : 0x072f,
-  productId : 0x2200,
-  factory : function(usbDriver) {
-    return new ACR122(usbDriver);
-  }
-});

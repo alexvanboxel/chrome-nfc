@@ -42,22 +42,13 @@ var PN53x = {
 
 };
 
-PN53x.Command = function() {
-
-}
-
 PN53x.InListPassiveTarget = function () {
-  var Type = 1;
   var MaxTg = 0x01;
   var BrTy = 0x00;
   var InitiatorData = null;
 
   var self = this;
-  var that = {}
-
-  that.getCmdType = function () {
-    return Type;
-  }
+  var that = Command.controllerCommand();
 
   that.make = function () {
     return new Uint8Array([0xD4, 0x4A, MaxTg, BrTy]);
@@ -115,15 +106,10 @@ PN53x.InListPassiveTarget = function () {
 
 
 PN53x.InDeselect = function () {
-  var Type = 1;
   var Tg = 0x01;
 
   var self = this;
-  var that = {}
-
-  that.getCmdType = function () {
-    return Type;
-  }
+  var that = Command.controllerCommand();
 
   that.make = function () {
     return new Uint8Array([0xD4, 0x44, Tg]);
@@ -141,16 +127,11 @@ PN53x.InDeselect = function () {
 
 
 PN53x.InRelease = function () {
-  var Type = 1;
   var Tg = 0x01;
 
   var self = this;
-  var that = {}
+  var that = Command.controllerCommand();
 
-
-  that.getCmdType = function () {
-    return Type;
-  }
 
   that.make = function () {
     return new Uint8Array([0xD4, 0x52, Tg]);
@@ -167,17 +148,11 @@ PN53x.InRelease = function () {
 };
 
 PN53x.InDataExchange = function (spec) {
-  var Type = 1;
   var Tg = 0x01;
   var DataOut = spec.DataOut;
 
   var self = this;
-  var that = {}
-
-
-  that.getCmdType = function () {
-    return Type;
-  }
+  var that = Command.controllerCommand();
 
   that.make = function () {
     return new UTIL_concat(new Uint8Array([0xD4, 0x40, Tg]), DataOut);
@@ -206,16 +181,11 @@ PN53x.InDataExchange = function (spec) {
 };
 
 PN53x.TgInitAsTarget = function (spec) {
-  var Type = 1;
   var Data = spec.Data;
 
   var self = this;
-  var that = {}
+  var that = Command.controllerCommand();
 
-
-  that.getCmdType = function () {
-    return Type;
-  }
 
   that.make = function () {
     return new UTIL_concat(Uint8Array([0xD4, 0x8C]), Data);
@@ -244,15 +214,9 @@ PN53x.TgInitAsTarget = function (spec) {
 };
 
 PN53x.TgGetInitiatorCommand = function () {
-  var Type = 1;
-
   var self = this;
-  var that = {}
+  var that = Command.controllerCommand();
 
-
-  that.getCmdType = function () {
-    return Type;
-  }
 
   that.make = function () {
     return new Uint8Array([0xD4, 0x88, Tg]);
@@ -280,16 +244,11 @@ PN53x.TgGetInitiatorCommand = function () {
 };
 
 PN53x.TgResponseToInitiator = function (spec) {
-  var Type = 1;
   var TgResponse = spec.TgResponse;
 
   var self = this;
-  var that = {}
+  var that = Command.controllerCommand();
 
-
-  that.getCmdType = function () {
-    return Type;
-  }
 
   that.make = function () {
     return new UTIL_concat(new Uint8Array([0xD4, 0x90]), TgResponse);
@@ -318,17 +277,12 @@ PN53x.TgResponseToInitiator = function (spec) {
 };
 
 PN53x.RFConfiguration = function (spec) {
-  var Type = 1;
   var CfgItem = spec.CfgItem;
   var ConfigurationData = spec.ConfigurationData;
 
   var self = this;
-  var that = {}
+  var that = Command.controllerCommand();
 
-
-  that.getCmdType = function () {
-    return Type;
-  }
 
   that.make = function () {
     return new UTIL_concat(new Uint8Array([0xD4, 0x32, CfgItem]), ConfigurationData);
