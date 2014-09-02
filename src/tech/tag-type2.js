@@ -4,13 +4,44 @@
 
 
 
-function tagType2(nfcAdapter,spec,shared) {
+function tagType2(nfcAdapter, spec, shared) {
 
   var self = this;
   var shared = shared || {};
 
-  var that = tagBase(nfcAdapter,spec,shared);
+  var that = tagBase(nfcAdapter, spec, shared);
 
+  var transceive = function (data, onSuccess) {
+    nfcAdapter.transceive(spec.tagIndex, data, onSuccess);
+  }
+
+  var readBlock = function (block, onSuccess) {
+    /* function-wise variable */
+    var u8 = new Uint8Array(2);  // Type 2 tag command
+    u8[0] = 0x30;                // READ command
+    u8[1] = block;               // block number
+
+    that.transceive(u8, function (data) {
+      onSuccess(data);
+    });
+  }
+
+  var writeBlock = function (blk_no, data, onSuccess) {
+    var u8 = new Uint8Array(2 + data.length);
+    u8[0] = 0xA2;
+    u8[1] = blk_no;
+    for (var i = 0; i < data.length; i++) {
+      u8[2 + i] = data[i];
+    }
+
+    that.transceive(u8, function () {
+      onSuccess(0);
+    });
+  }
+
+  that.transceive = transceive;
+  that.readBlock = readBlock;
+  that.writeBlock = writeBlock;
 
   return that;
 }
