@@ -165,6 +165,7 @@ NfcAdapter.prototype.detectTags = function(timeout, cb) {
         self.auth_key = null;
         cb([tagMifareUltralight(self,{
           tagId: tagData.NFCID1,
+          tagIndex: 1,
           techName: "Mifare Ultralight"
         })]);
         return;
@@ -177,6 +178,7 @@ NfcAdapter.prototype.detectTags = function(timeout, cb) {
         self.auth_key = null;
         cb([tagMifareClassic(self,{
           tagId: tagData.NFCID1,
+          tagIndex: 1,
           techName: "Mifare Classic 1K"
         })]);
         return;
@@ -196,48 +198,8 @@ NfcAdapter.prototype.detectTags = function(timeout, cb) {
 
 
 
-// read a block (16-byte) from tag.
-// cb(rc, data: ArrayBuffer)
-NfcAdapter.prototype.read_block = function(block, cb) {
-  var self = this;
-  var callback = cb;
-  if (!cb) cb = defaultCallback;
-
-  /* function-wise variable */
-  var u8 = new Uint8Array(2);  // Type 2 tag command
-  u8[0] = 0x30;                // READ command
-  u8[1] = block;               // block number
-
-  self.apdu(u8, function (data) {
-      callback(data);
-  });
-}
-
-
-// Input:
-//   blk_no: block number (tagMifareUltralight: 4-byte; Classic: 16-byte)
-//   data: Uint8Array.
-NfcAdapter.prototype.write_block = function(blk_no, data, cb, write_inst) {
-  var callback = cb;
-
-  if (write_inst == null) {
-    write_inst = 0xA2;  // tagMifareUltralight WRITE command
-  }
-
-  var u8 = new Uint8Array(2 + data.length);  // Type 2 tag command
-  u8[0] = write_inst;               // WRITE command
-  u8[1] = blk_no;                   // block number
-  for (var i = 0; i < data.length; i++) {
-    u8[2 + i] = data[i];
-  }
-
-  this.apdu(u8, function() {
-    callback(0);
-  });
-}
-
-// Send apdu (0x40 -- InDataExchange), receive response.
-NfcAdapter.prototype.apdu = function(req, cb) {
+// Send transceive (0x40 -- InDataExchange), receive response.
+NfcAdapter.prototype.transceive = function(tag,req, cb) {
   if (!cb) cb = defaultCallback;
   var self = this;
   self.nfcreader.command(PN53x.InDataExchange({DataOut: req}),cmdCntx({callback:cb,timeout:3000}));
@@ -250,5 +212,5 @@ NfcAdapter.prototype.apdu = function(req, cb) {
 //    this.dev.writeFrame(new Uint8Array(u8.subarray(i, i + 64)).buffer);
 //  }
 
-
 };
+

@@ -95,7 +95,7 @@ function tagMifareUltralight(nfcAdapter,spec,shared) {
           }
         }
 
-        nfcAdapter.read_block(block, function(bn) {
+        that.readBlock(block, function(bn) {
           card = UTIL_concat(card, bn);
           return poll_block(card, block + 4, poll_n);
         });
@@ -103,7 +103,7 @@ function tagMifareUltralight(nfcAdapter,spec,shared) {
       poll_block(card, block, poll_n);
     }
 
-    nfcAdapter.read_block(0, poll_block0);
+    that.readBlock(0, poll_block0);
   }
 
 
@@ -161,7 +161,7 @@ function tagMifareUltralight(nfcAdapter,spec,shared) {
       if (data.length < 4) data = UTIL_concat(data,
         new Uint8Array(4 - data.length));
 
-      nfcAdapter.write_block(block_no, data, function(rc) {
+      that.writeBlock(block_no, data, function(rc) {
         if (rc) return callback(rc);
         write_block(card, block_no + 1);
       });
@@ -170,7 +170,6 @@ function tagMifareUltralight(nfcAdapter,spec,shared) {
     /* Start from CC* fields */
     write_block(card, 3);
   }
-
 
   that.write = write;
   that.compose = compose;

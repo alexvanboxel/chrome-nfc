@@ -58,8 +58,6 @@
  */
 
 function tagMifareClassic(nfcAdapter, spec, shared) {
-  this.WRITE_COMMAND = 0xA0;  // differ to type 2's 0xA2.
-
 
   var self = this;
   var shared = shared || {};
@@ -164,7 +162,7 @@ function tagMifareClassic(nfcAdapter, spec, shared) {
     function read_next(phy_block) {
       var blk_no = phy_block;
       dev.publicAuthentication(blk_no, function () {
-        dev.read_block(blk_no, function (bn) {
+        that.readBlock(blk_no, function (bn) {
 
           // copy KEY A with auth_key from device.
           if ((blk_no % 4) == 3) {
@@ -186,7 +184,7 @@ function tagMifareClassic(nfcAdapter, spec, shared) {
   }
 
 
-// The callback is called with cb(NDEF Uint8Array).
+  // The callback is called with cb(NDEF Uint8Array).
   var read = function (device, cb) {
     var self = this;
     if (!cb) cb = defaultCallback;
@@ -267,6 +265,35 @@ function tagMifareClassic(nfcAdapter, spec, shared) {
 
     next_logic(logic_block, cnt);
   }
+
+  var transceive = function (data, onSuccess) {
+    nfcAdapter.transceive(spec.tagIndex, data, onSuccess);
+  }
+
+  var readBlock = function (block, onSuccess) {
+    /* function-wise variable */
+    var u8 = new Uint8Array(2);  // Type 2 tag command
+    u8[0] = 0x30;                // READ command
+    u8[1] = block;               // block number
+
+    that.transceive(u8, function (data) {
+      onSuccess(data);
+    });
+  }
+
+  var writeBlock = function (blk_no, data, onSuccess) {
+    var u8 = new Uint8Array(2 + data.length);
+    u8[0] = 0xA0;
+    u8[1] = blk_no;
+    for (var i = 0; i < data.length; i++) {
+      u8[2 + i] = data[i];
+    }
+
+    that.transceive(u8, function () {
+      onSuccess(0);
+    });
+  }
+
 
 
 // TODO: support multiple data set
@@ -367,9 +394,9 @@ function tagMifareClassic(nfcAdapter, spec, shared) {
     function authenticationCallback() {
 
       var block_data = data.subarray(0, 16);
-      dev.write_block(blk_no, block_data, function () {
+      that.writeBlock(blk_no, block_data, function () {
         self.write_physical(dev, blk_no + 1, key, data.subarray(16), callback);
-      }, self.WRITE_COMMAND);
+      });
     }
 
     if (key == null)
@@ -426,7 +453,7 @@ function tagMifareClassic(nfcAdapter, spec, shared) {
 
           // update the corresponding GPB to 0x00.
           var gpb_phy = self.log2sec(blk_no) * 4 + 3;
-          dev.read_block(gpb_phy, function (gpb_data) {
+          that.readBlock(gpb_phy, function (gpb_data) {
             gpb_data = self.copy_auth_keys(gpb_data, dev);
 
             if (gpb_phy == 3)
@@ -434,18 +461,19 @@ function tagMifareClassic(nfcAdapter, spec, shared) {
             else
               gpb_data[0x9] = 0x40;  // non-first GPB: MA=1.
 
-            dev.write_block(gpb_phy, gpb_data, function () {
+            that.writeBlock(gpb_phy, gpb_data, function () {
               // move to next block
               blk_no = blk_no + 1;
               data = data.subarray(16);
               return write_next(dev, blk_no, data);
-            }, self.WRITE_COMMAND);
+            });
           });
         });
     }
 
     write_next(device, logic_block, all_data);
   }
+
 
   that.read_physical = read_physical;
   that.read = read;
@@ -454,6 +482,10 @@ function tagMifareClassic(nfcAdapter, spec, shared) {
   that.write_physical = write_physical;
   that.write = write;
   that.write_logic = write_logic;
+
+  that.transceive = transceive;
+  that.readBlock = readBlock;
+  that.writeBlock = writeBlock;
 
   return that;
 }
