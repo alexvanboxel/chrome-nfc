@@ -5,8 +5,8 @@
  *
  * @param usbDriver
  * @returns {{}}
- * @constructor
  */
+
 function pn533(usbDriver) {
 
   var that = {};
