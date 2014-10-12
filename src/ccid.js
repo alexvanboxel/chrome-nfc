@@ -83,7 +83,9 @@ function CCID(usbDriver) {
     if ((status & (128)) !== 0) {
       throw {type: "CCID", message: "Time Extension is requested"}
     }
-    if (Error(error)) {
+    var err = Error(error);
+    if (err) {
+      throw {type: "CCID", code: err.code, message: err.message}
     }
 
   };
