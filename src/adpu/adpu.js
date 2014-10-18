@@ -78,7 +78,7 @@ PN53x.InListPassiveTarget = function () {
       console.log(tagData);
     }
 
-    return tags;
+    return {Data:tags,Pop:true};
   }
 
   that.debug = function () {
@@ -170,7 +170,7 @@ PN53x.InDataExchange = function (spec) {
     if (f[2] != 0x00) {
       throw {type: "PN53xException", message: self.Status(f[2])}
     }
-    return (f.subarray(3));
+    return {Data:(f.subarray(3)),Pop:true};
   }
 
   that.debug = function () {
@@ -203,7 +203,7 @@ PN53x.TgInitAsTarget = function (spec) {
     data.Mode = f[2];
     data.InitiatorCommand = f.subarray(3);
     console.log(data);
-    return data;
+    return {Data:data,Pop:true};
   }
 
   that.debug = function () {
@@ -234,7 +234,7 @@ PN53x.TgGetInitiatorCommand = function () {
     if (f[2] != 0x00) {
       throw {type: "PN53xException", message: self.Status(f[2])}
     }
-    return (f.subarray(3));
+    return {Data:(f.subarray(3)),Pop:true};
   }
 
   that.debug = function () {
@@ -266,7 +266,7 @@ PN53x.TgResponseToInitiator = function (spec) {
     if (f[2] != 0x00) {
       throw {type: "PN53xException", message: self.Status(f[2])}
     }
-    return;
+    return {Data:null,Pop:true};
   }
 
   that.debug = function () {
@@ -300,7 +300,7 @@ PN53x.RFConfiguration = function (spec) {
     if (f[2] != 0x00) {
       throw {type: "PN53xException", message: self.Status(f[2])}
     }
-    return;
+    return {Data:null,Pop:true};
   }
 
   that.debug = function () {

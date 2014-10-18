@@ -62,19 +62,10 @@ NfcAdapter.prototype.open = function(which, cb, onclose) {
     var result = (self.dev != null) ? 0 : 1;
 
     /* extra configuration for ACR122 */
-    if (self.dev && self.dev.isACR122()) {
-      self.nfcreader = self.dev;
-
-      self.nfcreader.acr122_reset_to_good_state(self,function() {
-        self.nfcreader.acr122_set_buzzer(self,false, function() {
-          if (callback) callback(result);
-        });
-      });
-    } else {
-      self.nfcreader = self.dev;
-
+    self.nfcreader = self.dev;
+    self.nfcreader.init(self, function() {
       if (callback) callback(result);
-    }
+    });
   });
 };
 
@@ -83,9 +74,9 @@ NfcAdapter.prototype.close = function() {
 
   /* deselect and release target if any tag is associated. */
   function deselect_release(cb) {
-    self.nfcreader.command(PN53x.InDeselect(),cmdCntx({timeout:1}).setCallback(
+    self.nfcreader.command(PN53x.InDeselect(),cmdCntx({driver: self.nfcreader, timeout:1}).setCallback(
       function() {
-        self.nfcreader.command(PN53x.InRelease(),cmdCntx({timeout:1}).setCallback(
+        self.nfcreader.command(PN53x.InRelease(),cmdCntx({driver: self.nfcreader, timeout:1}).setCallback(
           function() {
           }));
       }));
@@ -134,13 +125,13 @@ NfcAdapter.prototype.wait_for_passive_target = function(timeout, cb) {
     cb();
   }
 
-  if (self.dev.isACR122()) {
-    self.nfcreader.acr122_set_timeout(self,timeout, function() {
-      self.nfcreader.command(PN53x.InListPassiveTarget(),cmdCntx({callback:tagDetector,timeout:timeout}));
-    });
-  } else {
-    self.nfcreader.command(PN53x.InListPassiveTarget(),cmdCntx({callback:tagDetector,timeout:timeout}));
-  }
+//  if (self.dev.isACR122()) {
+//    self.nfcreader.acr122_set_timeout(self,timeout, function() {
+//      self.nfcreader.command(PN53x.InListPassiveTarget(),cmdCntx({callback:tagDetector,timeout:timeout}));
+//    });
+//  } else {
+    self.nfcreader.command(PN53x.InListPassiveTarget(),cmdCntx({driver: self.nfcreader, callback:tagDetector,timeout:timeout}));
+//  }
 };
 
 
@@ -187,13 +178,13 @@ NfcAdapter.prototype.detectTags = function(timeout, cb) {
     cb([]);
   }
 
-  if (self.dev.isACR122()) {
-    self.nfcreader.acr122_set_timeout(self,timeout, function() {
-      self.nfcreader.command(PN53x.InListPassiveTarget(),cmdCntx({callback:tagDetector,timeout:timeout}));
-    });
-  } else {
-    self.nfcreader.command(PN53x.InListPassiveTarget(),cmdCntx({callback:tagDetector,timeout:timeout}));
-  }
+//  if (self.dev.isACR122()) {
+//    self.nfcreader.acr122_set_timeout(self,timeout, function() {
+//      self.nfcreader.command(PN53x.InListPassiveTarget(),cmdCntx({callback:tagDetector,timeout:timeout}));
+//    });
+//  } else {
+    self.nfcreader.command(PN53x.InListPassiveTarget(),cmdCntx({driver: self.nfcreader, callback:tagDetector,timeout:timeout}));
+//  }
 };
 
 
@@ -202,7 +193,7 @@ NfcAdapter.prototype.detectTags = function(timeout, cb) {
 NfcAdapter.prototype.transceive = function(tag,req, cb) {
   if (!cb) cb = defaultCallback;
   var self = this;
-  self.nfcreader.command(PN53x.InDataExchange({DataOut: req}),cmdCntx({callback:cb,timeout:3000}));
+  self.nfcreader.command(PN53x.InDataExchange({DataOut: req}),cmdCntx({driver: self.nfcreader, callback:cb,timeout:3000}));
 
 //  var u8 = new Uint8Array(this.makeFrame(0x40,
 //                                         UTIL_concat([0x01/*Tg*/], req)));
