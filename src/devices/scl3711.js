@@ -19,6 +19,10 @@ function scl3711(usbDriver) {
 
   that.isACR122 = function() { return false; }
 
+  that.init = function(adapter, cb) {
+    cb();
+  }
+
   return that;
 }
 
@@ -27,6 +31,9 @@ dev_manager.registerDriver({
   name : "SCL3711",
   vendorId : 0x04e6,
   productId : 0x5591,
+  endInput : 4,
+  endOutput : 4,
+  endInterrupt : 4,
   factory : function(usbDriver) {
     return scl3711(usbDriver);
   }

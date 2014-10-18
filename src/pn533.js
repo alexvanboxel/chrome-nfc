@@ -38,7 +38,7 @@ function pn533(usbDriver) {
 
   var PN533_TO_PC = function (data, cmdCntx) {
     console.log(UTIL_fmt("<<< PN533 <<< " + UTIL_BytesToHex(data) ));
-    return data.subarray(5);
+    return {Data:data.subarray(5),Pop:true};
   }
 
   var PC_TO_PN533 = function (data, cmdCntx) {

@@ -47,6 +47,7 @@ JS_FILES = [
   'src/ccid.js',
   'src/usb.js',
   'src/devices/acr122.js',
+  'src/devices/acr122u-sam.js',
   'src/devices/scl3711.js'
 ]
 

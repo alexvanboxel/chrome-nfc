@@ -25,11 +25,13 @@ function usbDriver(usbHandle, spec) {
   var clients = [];
   var vendorId = spec.vendorId;
   var productId = spec.productId;
-  var endpoint = 4;
+  var endInput = spec.endInput;
+  var endOutput = spec.endOutput;
+  var endInterrupt = spec.endInterrupt;
 
   // TODO: Need to remove this...
   var isACR122 = function () {
-    return vendorId == 0x072f && productId == 0x2200;
+    return vendorId == 0x072f;
   };
 
   var readLoop = function () {
@@ -40,7 +42,7 @@ function usbDriver(usbHandle, spec) {
     var self = this;
     chrome.usb.bulkTransfer(
       usbHandle,
-      { direction: 'in', endpoint: endpoint, length: 2048 },
+      { direction: 'in', endpoint: endInput, length: 2048 },
       function (x) {
         if (x.data) {
           if (x.data.byteLength >= 5) {
@@ -103,7 +105,7 @@ function usbDriver(usbHandle, spec) {
 
     chrome.usb.bulkTransfer(
       usbHandle,
-      {direction: 'out', endpoint: endpoint, data: frame},
+      {direction: 'out', endpoint: endOutput, data: frame},
       transferComplete
     );
   };
@@ -168,11 +170,6 @@ function usbDriver(usbHandle, spec) {
 
     return true;
   };
-
-  // set other endpoint for ACR122
-  if (isACR122()) {
-    endpoint = 2;
-  }
 
   // start readLoop and return public methods
   readLoop();

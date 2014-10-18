@@ -3,6 +3,7 @@ var cmdCntx = function (spec) {
   var stack = [];
   var pub = {};
   spec = spec || {};
+
   var onSuccess = spec.callback || function (f) {
     console.error(UTIL_fmt("!!! onSuccess !!! Default callback for Command Context, received " + JSON.stringify(f)));
   };
@@ -55,8 +56,10 @@ var cmdCntx = function (spec) {
       var out = null;
       try {
         var layerContext = stack.pop();
-        out = layerContext.handle(value, layerContext, pub);
-        pub.up(out);
+        out = layerContext.handle(value, layerContext, pub, spec.driver);
+        if (out.Pop) {
+          pub.up(out.Data);
+        }
       }
       catch (e) {
         onError(e);

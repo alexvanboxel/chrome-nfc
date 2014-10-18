@@ -85,39 +85,39 @@ function CCID(usbDriver) {
     }
     var err = Error(error);
     if (err) {
-      throw {type: "CCID", code: err.code, message: err.message}
+//      throw {type: "CCID", code: err.code, message: err.message}
     }
 
   };
 
   var RDR_to_PC_SlotStatus = function (f, layerCntx) {
     assertResponse(f, layerCntx.seq, 0x83, "RDR_to_PC_SlotStatus");
-    return f.subarray(10, f.length);
+    return {Data:f.subarray(10, f.length),Pop:true};
   };
 
   var RDR_to_PC_Parameters = function (f, layerCntx) {
     assertResponse(f, layerCntx.seq, 0x83, "RDR_to_PC_Parameters");
-    return f.subarray(10, f.length);
+    return {Data:f.subarray(10, f.length),Pop:true};
   };
 
   var RDR_to_PC_Escape = function (f, layerCntx) {
     assertResponse(f, layerCntx.seq, 0x83, "RDR_to_PC_Escape");
-    return f.subarray(10, f.length);
+    return {Data:f.subarray(10, f.length),Pop:true};
   };
 
   var RDR_to_PC_DataRateAndClockFrequency = function (f, layerCntx) {
     assertResponse(f, layerCntx.seq, 0x83, "RDR_to_PC_DataRateAndClockFrequency");
-    return f.subarray(10, f.length);
+    return {Data:f.subarray(10, f.length),Pop:true};
   };
 
   var RDR_to_PC_DataBlock = function (f, layerCntx) {
     assertResponse(f, layerCntx.seq, 0x80, "RDR_to_PC_DataBlock");
-    return f.subarray(10, f.length);
+    return {Data:f.subarray(10, f.length),Pop:true};
   };
 
   var RDR_to_PC_Raw = function (f) {
     console.log(UTIL_fmt("<<< CCID <<< PC_TO_RDR_Raw (Pass Thru) | " + UTIL_BytesToHex(f)));
-    return f.subarray(10, f.length);
+    return {Data:f.subarray(10, f.length),Pop:true};
   };
 
   var PC_TO_RDR_Raw = function (payload, cmdCntx) {
@@ -180,6 +180,28 @@ function CCID(usbDriver) {
   };
 
   var PC_to_RDR_XfrBlock = function (payload, cmdCntx) {
+    // header
+    var apdu_len = payload.length;
+    var seq = getNextSequence();
+    var c8 = new Uint8Array(10);             // CCID header
+    c8[0] = 0x6f;                            //   PC_to_RDR_Escape
+    c8[1] = (apdu_len >> 0) & 0xff;          //   LEN (little-endian)
+    c8[2] = (apdu_len >> 8) & 0xff;          //
+    c8[3] = (apdu_len >> 16) & 0xff;         //
+    c8[4] = (apdu_len >> 24) & 0xff;         //
+    c8[5] = 0x00;                            //   bSlot
+    c8[6] = seq;                             //   bSeq
+    c8[7] = 0x00;                            //   abRFU
+    c8[8] = 0x00;                            //   abRFU
+    c8[9] = 0x00;                            //   abRFU
+
+    console.log(UTIL_fmt(">>> CCID >>> PC_to_RDR_XfrBlock.1 | 6B | LEN = " + c8[1] + " " + c8[2] + " " + c8[3] + " " + c8[4] + "  | bSlot = 00 | bSeq = 00 | abRFU = 00 00 00"));
+    console.log(UTIL_fmt(">>> CCID >>> PC_to_RDR_XfrBlock.2 | " + UTIL_BytesToHex(payload)));
+    var buffer = UTIL_concat(c8, payload).buffer;
+
+    cmdCntx.pushLayer({seq: seq, handle: RDR_to_PC_DataBlock});
+    currCntx = cmdCntx;
+    usbDriver.writeFrame(buffer);
   };
 
   var PC_to_RDR_GetParameters = function (payload, cmdCntx) {

@@ -20,7 +20,7 @@ ACR.PseudoADPU = function (spec) {
       throw {type: "ACR", message: "ACR operation failed."}
     }
     if ( (f[f.length-2] === 0x90) && (f[f.length-1] === 0x00) ) {
-      return f.subarray(0, f.length-2);
+      return {Data:f.subarray(0, f.length-2),Pop:true};
     }
     throw {type: "ACR", message: "Unexpected ACR status SW1 = " +f[f.length-2] + " SW2 = " +f[f.length-1]};
   }
@@ -32,6 +32,89 @@ ACR.PseudoADPU = function (spec) {
 
   return that;
 };
+
+
+ACR.DirectTransmit = function (spec) {
+  var Data = spec.Data;
+
+  var that = Command.deviceCommand();
+
+  that.make = function () {
+    return new UTIL_concat(new Uint8Array([0xFF, 0x00, 0x00, 0x00, Data.length]), Data);
+  }
+
+  that.response = function (f,layer,cntx,driver) {
+    if (f.length < 2) {
+      throw {type: "ACR", message: "Frame should be at least 2 bytes for status."}
+    }
+    console.log(UTIL_fmt("<<< ACR <<< DirectTransmit.1 | "+UTIL_BytesToHex(f.subarray(0, f.length-2))));
+    console.log(UTIL_fmt("<<< ACR <<< DirectTransmit.2 | SW1 = " +f[f.length-2] + " SW2 = " +f[f.length-1]));
+    if (f[f.length-2] === 0x63) {
+      if(f[f.length-1] === 0x00) {
+        throw {type: "ACR", message: "ACR operation failed."}
+      }
+      else if(f[f.length-1] === 0x01) {
+        throw {type: "ACR", message: "ACR contactless interface does not respont."}
+      }
+      else if(f[f.length-1] === 0x27) {
+        throw {type: "ACR", message: "ACR checksum of the contactless interface is wrong."}
+      }
+      else if(f[f.length-1] === 0x7f) {
+        throw {type: "ACR", message: "ACR contactless command is wrong."}
+      }
+      else if(f[f.length-1] === 0x00) {
+        throw {type: "ACR", message: "ACR unknown failure."}
+      }
+    }
+    // Length
+    if (f[0] == 0x61 ) {
+      var length = f[1];
+      driver.command(ACR.GetResponse({Data: length}), cntx);
+      return {Data:null,Pop:false};
+    }
+
+  }
+
+  that.debug = function () {
+    console.log(UTIL_fmt(">>> ACR >>> DirectTransmit.1 | Class = FF | INS = 00 | P = 00 00 | Lc = "+Data.length));
+    console.log(UTIL_fmt(">>> ACR >>> DirectTransmit.2 | " + UTIL_BytesToHex(Data)));
+  }
+
+  return that;
+};
+
+
+ACR.GetResponse = function (spec) {
+  var Data = spec.Data;
+
+  var that = Command.deviceCommand();
+
+  that.make = function () {
+    return new Uint8Array([0xFF, 0xC0, 0x00, 0x00, Data]);
+  }
+
+  that.response = function (f) {
+    if (f.length < 2) {
+      throw {type: "ACR", message: "Frame should be at least 2 bytes for status."}
+    }
+    console.log(UTIL_fmt("<<< ACR <<< GetResponse.1 | "+UTIL_BytesToHex(f.subarray(0, f.length-2))));
+    console.log(UTIL_fmt("<<< ACR <<< GetResponse.2 | SW1 = " +f[f.length-2] + " SW2 = " +f[f.length-1]));
+    if ( (f[f.length-2] === 0x63) && (f[f.length-1] === 0x00) ) {
+      throw {type: "ACR", message: "ACR operation failed."}
+    }
+    if ( (f[f.length-2] === 0x90) && (f[f.length-1] === 0x00) ) {
+      return {Data:f.subarray(0, f.length-2),Pop:true};
+    }
+    throw {type: "ACR", message: "Unexpected ACR status SW1 = " +f[f.length-2] + " SW2 = " +f[f.length-1]};
+  }
+
+  that.debug = function () {
+    console.log(UTIL_fmt(">>> ACR >>> GetResponse.1 | Class = FF | INS = C0 | P = 00 00 | Lc = "+Data));
+  }
+
+  return that;
+};
+
 
 
 ACR.LoadAuthenticationKey = function (spec) {
@@ -59,7 +142,7 @@ ACR.LoadAuthenticationKey = function (spec) {
       throw {type: "ACR", message: "ACR operation failed."}
     }
     if ( (f[f.length-2] === 0x90) && (f[f.length-1] === 0x00) ) {
-      return f.subarray(0, f.length-2);
+      return {Data:f.subarray(0, f.length-2),Pop:true};
     }
     throw {type: "ACR", message: "Unexpected ACR status SW1 = " +f[f.length-2] + " SW2 = " +f[f.length-1]};
   }
@@ -108,7 +191,7 @@ ACR.Authentication = function (spec) {
       throw {type: "ACR", message: "ACR operation failed."}
     }
     if ( (f[f.length-2] === 0x90) && (f[f.length-1] === 0x00) ) {
-      return f.subarray(0, f.length-2);
+      return {Data:f.subarray(0, f.length-2),Pop:true};
     }
     throw {type: "ACR", message: "Unexpected ACR status SW1 = " +f[f.length-2] + " SW2 = " +f[f.length-1]};
   }
