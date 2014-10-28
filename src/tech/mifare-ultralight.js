@@ -137,41 +137,6 @@ function tagMifareUltralight(nfcAdapter,spec,shared) {
     return ret;
   }
 
-
-// Input:
-//   ndef: ArrayBuffer. Just ndef is needed. tagMifareUltralight header is handled.
-  var write = function(ndef, cb) {
-    if (!cb) cb = defaultCallback;
-
-    var self = this;
-    var callback = cb;
-    var card = self.compose(new Uint8Array(ndef));
-    var card_blknum = Math.floor((card.length + 3) / 4);
-
-    /* TODO: check memory size according to CC value */
-    if (card_blknum > (64 / 4)) {
-      console.log("write_tt2() card is too big (max: 64 bytes): " + card.length);
-      return callback(0xbbb);
-    }
-
-    function write_block(card, block_no) {
-      if (block_no >= card_blknum) { return callback(0); }
-
-      var data = card.subarray(block_no * 4, block_no * 4 + 4);
-      if (data.length < 4) data = UTIL_concat(data,
-        new Uint8Array(4 - data.length));
-
-      that.writeBlock(block_no, data, function(rc) {
-        if (rc) return callback(rc);
-        write_block(card, block_no + 1);
-      });
-    }
-
-    /* Start from CC* fields */
-    write_block(card, 3);
-  }
-
-  that.write = write;
   that.compose = compose;
   that.read = read;
 

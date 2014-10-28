@@ -39,9 +39,29 @@ function tagType2(nfcAdapter, spec, shared) {
     });
   }
 
+  var write = function (data, onSuccess, onError) {
+    var payload = data.getBytes();
+    var blockCount = Math.floor((payload.length + 3) / 4);
+
+    function writePart(data, offset) {
+      if (offset >= blockCount) { return onSuccess(); }
+
+      var block = data.subarray(offset * 4, offset * 4 + 4);
+      if (block.length < 4) block = UTIL_concat(block,
+        new Uint8Array(4 - block.length));
+
+      that.writeBlock(4+offset, block, function() {
+        writePart(data, offset + 1);
+      });
+    }
+
+    writePart(payload, 0);
+  }
+
   that.transceive = transceive;
   that.readBlock = readBlock;
   that.writeBlock = writeBlock;
+  that.write = write;
 
   return that;
 }

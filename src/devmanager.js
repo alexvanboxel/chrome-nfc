@@ -145,7 +145,7 @@ devManager.prototype.enumerate = function(cb) {
    */
   function findFirstReader(i) {
     if(i < self.deviceDrivers.length) {
-      driver = self.deviceDrivers[i];
+      var driver = self.deviceDrivers[i];
       console.log('Searching for ' + driver.name);
       chrome.usb.findDevices({'vendorId': driver.vendorId, 'productId': driver.productId},
         function (d) {
