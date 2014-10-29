@@ -154,7 +154,7 @@ NfcAdapter.prototype.detectTags = function(timeout, cb) {
         self.detected_tag = "Mifare Ultralight";
         self.authed_sector = null;
         self.auth_key = null;
-        cb([tagMifareUltralight(self,{
+        cb([tagMifareUltralightC(self,{
           tagId: tagData.NFCID1,
           tagIndex: 1,
           techName: "Mifare Ultralight"
@@ -202,6 +202,13 @@ NfcAdapter.prototype.transceive = function(tag,req, cb) {
 //  for (var i = 0; i < u8.length; i += 64) {
 //    this.dev.writeFrame(new Uint8Array(u8.subarray(i, i + 64)).buffer);
 //  }
+
+};
+
+NfcAdapter.prototype.communicate = function(req, cb) {
+  if (!cb) cb = defaultCallback;
+  var self = this;
+  self.nfcreader.command(PN53x.InCommunicateThru({DataOut: req}),cmdCntx({driver: self.nfcreader, callback:cb,timeout:3000}));
 
 };
 

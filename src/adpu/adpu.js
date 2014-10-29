@@ -180,6 +180,38 @@ PN53x.InDataExchange = function (spec) {
   return that;
 };
 
+PN53x.InCommunicateThru = function (spec) {
+  var DataOut = spec.DataOut;
+
+  var self = this;
+  var that = Command.controllerCommand();
+
+  that.make = function () {
+    return new UTIL_concat(new Uint8Array([0xD4, 0x42]), DataOut);
+  }
+
+  that.response = function (f) {
+    if (f[0] != 0xD5) {
+      throw {type: "PN53xException", message: "Response is not an PN53x response."}
+    }
+    if (f[1] != 0x43) {
+      throw {type: "PN53xException", message: "Expected 0x43 (InCommunicateThru reply), but was " + f[1]}
+    }
+    console.log(UTIL_fmt("<<< PN53x <<< InCommunicateThru.1 | " + UTIL_BytesToHex(f)));
+
+    if (f[2] != 0x00) {
+      throw {type: "PN53xException", message: self.Status(f[2])}
+    }
+    return {Data:(f.subarray(3)),Pop:true};
+  }
+
+  that.debug = function () {
+    console.log(UTIL_fmt(">>> PN53x >>> InCommunicateThru | D4 42 | " + UTIL_BytesToHex(DataOut)));
+  }
+
+  return that;
+};
+
 PN53x.TgInitAsTarget = function (spec) {
   var Data = spec.Data;
 

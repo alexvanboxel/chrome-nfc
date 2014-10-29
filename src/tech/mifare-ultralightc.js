@@ -11,14 +11,27 @@ function tagMifareUltralightC(nfcAdapter,spec,shared) {
 
   var that = tagMifareUltralight(nfcAdapter,spec,shared);
 
-  /**
+  var authenticate = function(spec,onSuccess,onFailure) {
+    /* function-wise variable */
+    var u8 = new Uint8Array(2);
+    u8[0] = 0x1A;
+    u8[1] = 0x00;
+
+    nfcAdapter.communicate(u8, function (data) {
+      onSuccess(data);
+    });
+
+  }
+
+
+    /**
    * {
    *  sector: 1,
    *  key: [],
    *  keyIndex: 0 (for A) or 1 (for B)
    * }
    */
-  var authenicate = function(spec,onSuccess,onFailure) {
+  var javaport = function(spec,onSuccess,onFailure) {
 
     var key = spec.key;
     if(!key) {
