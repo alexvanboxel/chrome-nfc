@@ -4,82 +4,69 @@
 
 
 
-function tagMifareUltralightC(nfcAdapter,spec,shared) {
+function tagMifareUltralightC(nfcAdapter, spec, shared) {
 
   var self = this;
   var shared = shared || {};
 
-  var that = tagMifareUltralight(nfcAdapter,spec,shared);
+  var KEY_DEFAULT = new Uint8Array([ 0x49, 0x45, 0x4D, 0x4B, 0x41, 0x45, 0x52, 0x42,
+                                    0x21, 0x4E, 0x41, 0x43, 0x55, 0x4F, 0x59, 0x46]);
 
-  var authenticate = function(spec,onSuccess,onFailure) {
-    /* function-wise variable */
-    var u8 = new Uint8Array(2);
-    u8[0] = 0x1A;
-    u8[1] = 0x00;
+  var that = tagMifareUltralight(nfcAdapter, spec, shared);
+  that.KEY_DEFAULT = KEY_DEFAULT;
 
-    nfcAdapter.communicate(u8, function (data) {
-      onSuccess(data);
-    });
+  function combineRandomToken(rndA, rndB) {
+    return UTIL_concat(rndA, rol(xor(rndB)));
+  }
 
+  function xor(bytes) {
+    var res = new Uint8Array(bytes.length);
+
+    for (var i = 0; i < bytes.length; i++) {
+      res[i] = bytes[i] ^ 0;
+    }
+    return res;
+  }
+
+  function rol(bytes) {
+    var res = new Uint8Array(bytes.length);
+    res[bytes.length - 1] = bytes[0];
+    for (var i = 1; i < bytes.length; i++) {
+      res[i - 1] = bytes[i];
+    }
+    return res;
   }
 
 
-    /**
-   * {
-   *  sector: 1,
-   *  key: [],
-   *  keyIndex: 0 (for A) or 1 (for B)
-   * }
-   */
-  var javaport = function(spec,onSuccess,onFailure) {
-
-    var key = spec.key;
-    if(!key) {
-      throw new RuntimeException("Key is null.");
-    }
-    if(key.length != 16) {
-      throw new RuntimeException("Key needs to be 128 bit.");
-    }
+  var authenticate = function (spec, onSuccess, onFailure) {
+//    var key = spec.key;
+//    if (!key) {
+//      throw new RuntimeException("Key is null.");
+//    }
+//    if (key.sigBytes != 16) {
+//      throw new RuntimeException("Key needs to be 128 bit.");
+//    }
 
     var initVector = new Uint8Array([0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
-    // should be random
+    var randomA = new Uint8Array([0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08])
 
     // Get encrypted Random B, this random number is encrypted with the 128 key of the tag
-    var encryptedRndB = transceive(new Uint8Array([
+    nfcAdapter.communicate(new Uint8Array([
       0x1A, 0x00
-    ]));
-    encryptedRndB = Arrays.copyOfRange(encryptedRndB, 1, 9);
+    ]), function (encryptedRndB) {
 
-    // Initialize the crypto engine in 3DES with a 0 vector and out 128 bit key
-    var secretKey = new SecretKeySpec(key, "DESede");
-    var cipher = Cipher.getInstance("DESede/CBC/NoPadding");
-    var ivParameterSpec = new IvParameterSpec(initVector);
-    cipher.init(Cipher.DECRYPT_MODE, secretKey, ivParameterSpec);
+      var encryptedRndB = encryptedRndB.subarray(1, 9);
 
-    // Decrypt the random number of the tag
-    var rndB = cipher.doFinal(encryptedRndB);
+      /** AUTHENTICE NOT WORKING... Need more research into JS Encryption with 3DES !!!*/
 
-    // Generate generate a random number
-    var rndA = new Uint8Array([0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08]);
+      // Decrypt the random number of the tag
 
-    // Combine the out random number and the tags random number, encrypt
-    var encryptVector = new IvParameterSpec(encryptedRndB);
-    cipher.init(Cipher.ENCRYPT_MODE, secretKey, encryptVector);
-    var encryptedToken = cipher.doFinal(combineRandomToken(rndA, rndB));
+      // Combine the our random number (faked) and the tags random number, encrypt
+      //var combinedToken = "0102030405060708" + hexRndB;
 
-    // Send to token to the tag to prove we have the same 3DES key
-    var encryptedRndA = transceive(Bytes.concat(new Uint8Array([ 0xAF]), encryptedToken));
-    encryptedRndA = Arrays.copyOfRange(encryptedRndA, 1, 9);
+      var combinedToken = combineRandomToken(randomA, UTIL_HexToUint8Array(hexRndB) );
 
-    //System.out.println("encryptedRndA: " + IOUtil.hex(encryptedRndA));
-    //IvParameterSpec ivParameterSpec = new IvParameterSpec(initVector);
-    cipher.init(Cipher.DECRYPT_MODE, secretKey, ivParameterSpec);
-
-    var decryptedRndA = cipher.doFinal( rol(xor ( encryptedRndA )) );
-    //System.out.println("decryptedRndA: " + IOUtil.hex(decryptedRndA));
-
-
-
+    });
   }
 
   that.authenticate = authenticate;

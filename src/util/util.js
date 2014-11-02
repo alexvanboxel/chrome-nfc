@@ -42,6 +42,14 @@ function UTIL_BytesToHex(b) {
   return hexrep.join('');
 }
 
+function UTIL_Uint8ArrayToHex(ua) {
+  var h = '';
+  for (var i = 0; i < ua.length; i++) {
+    h += ua[i].toString(16);
+  }
+  return h;
+}
+
 function UTIL_BytesToHexWithSeparator(b, sep) {
   if (!b) return '(null)';
   var hexchars = '0123456789ABCDEF';
@@ -65,6 +73,11 @@ function UTIL_HexToBytes(h) {
   }
   return res;
 }
+
+function UTIL_HexToUint8Array(h) {
+  return UTIL_HexToBytes(h);
+}
+
 
 function UTIL_equalArrays(a, b) {
   if (!a || !b) return false;
