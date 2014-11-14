@@ -135,12 +135,30 @@ NfcAdapter.prototype.wait_for_passive_target = function(timeout, cb) {
 };
 
 
+NfcAdapter.prototype.configure = function(spec,onSuccess,onError) {
+  var self = this;
+  self.nfcreader.command(PN53x.RFConfiguration(
+      {
+        CfgItem: 0x05,
+        // MaxRetryATR, MaxRetryPSL, MaxRetryPassiveActivation
+        ConfigurationData: new Uint8Array([0x00,0x00,0x50])
+      }
+    ),
+    cmdCntx(
+      {
+        driver: self.nfcreader,
+        callback:onSuccess,
+        onError: onError
+      }));
+
+}
+
 /**
  * Replacement of wait_for_passive_target
  * @param timeout
  * @param cb([tags])
  */
-NfcAdapter.prototype.detectTags = function(timeout, cb) {
+NfcAdapter.prototype.detectTags = function(timeout, cb, onError) {
   var self = this;
 
   if (!cb) cb = defaultCallback;
@@ -183,17 +201,29 @@ NfcAdapter.prototype.detectTags = function(timeout, cb) {
 //      self.nfcreader.command(PN53x.InListPassiveTarget(),cmdCntx({callback:tagDetector,timeout:timeout}));
 //    });
 //  } else {
-    self.nfcreader.command(PN53x.InListPassiveTarget(),cmdCntx({driver: self.nfcreader, callback:tagDetector,timeout:timeout}));
+    self.nfcreader.command(PN53x.InListPassiveTarget(),cmdCntx(
+      {
+        driver: self.nfcreader,
+        callback:tagDetector,
+        onError: onError,
+        timeout:timeout
+      }));
 //  }
 };
 
 
 
 // Send transceive (0x40 -- InDataExchange), receive response.
-NfcAdapter.prototype.transceive = function(tag,req, cb) {
+NfcAdapter.prototype.transceive = function(tag,req, cb, onError) {
   if (!cb) cb = defaultCallback;
   var self = this;
-  self.nfcreader.command(PN53x.InDataExchange({DataOut: req}),cmdCntx({driver: self.nfcreader, callback:cb,timeout:3000}));
+  self.nfcreader.command(PN53x.InDataExchange({DataOut: req}),cmdCntx(
+    {
+      driver: self.nfcreader,
+      callback:cb,
+      onError:onError,
+      timeout:3000
+    }));
 
 //  var u8 = new Uint8Array(this.makeFrame(0x40,
 //                                         UTIL_concat([0x01/*Tg*/], req)));
@@ -205,10 +235,16 @@ NfcAdapter.prototype.transceive = function(tag,req, cb) {
 
 };
 
-NfcAdapter.prototype.communicate = function(req, cb) {
+NfcAdapter.prototype.communicate = function(req, cb,onError) {
   if (!cb) cb = defaultCallback;
   var self = this;
-  self.nfcreader.command(PN53x.InCommunicateThru({DataOut: req}),cmdCntx({driver: self.nfcreader, callback:cb,timeout:3000}));
+  self.nfcreader.command(PN53x.InCommunicateThru({DataOut: req}),cmdCntx(
+    {
+      driver: self.nfcreader,
+      callback:cb,
+      onError:onError,
+      timeout:3000
+    }));
 
 };
 

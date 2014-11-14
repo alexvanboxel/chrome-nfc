@@ -327,11 +327,7 @@ PN53x.RFConfiguration = function (spec) {
     if (f[1] != 0x33) {
       throw {type: "PN53xException", message: "Expected 0x41 (RFConfiguration reply), but was " + f[1]}
     }
-    console.log(UTIL_fmt("<<< PN53x <<< RFConfiguration.1 | " + UTIL_BytesToHex(f)));
-
-    if (f[2] != 0x00) {
-      throw {type: "PN53xException", message: self.Status(f[2])}
-    }
+    console.log(UTIL_fmt("<<< PN53x <<< RFConfiguration.1"));
     return {Data:null,Pop:true};
   }
 

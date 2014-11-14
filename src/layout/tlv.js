@@ -164,18 +164,33 @@ function tlvBlock(tlv) {
 
   var getBytesLength = function() {
     var len = 0;
-    for(var e in tlv) {
-      len += tlv[e].getBytesLength();
+    for(var ix=0;ix<tlv.length;ix++) {
+      len += tlv[ix].getBytesLength();
     }
     return len;
   };
 
   var getBytes = function() {
     var b = new Uint8Array([]);
-    for(var e in tlv) {
-      b = UTIL_concat(b, tlv[e].getBytes());
+    for(var ix=0;ix<tlv.length;ix++) {
+      b = UTIL_concat(b, tlv[ix].getBytes());
     }
     return b;
+  };
+
+  var that = {};
+  that.getBytesLength = getBytesLength;
+  that.getBytes = getBytes;
+  return that;
+}
+
+function rawBlock(b) {
+  var getBytesLength = function() {
+    return b.length;
+  };
+
+  var getBytes = function() {
+    return new Uint8Array(b);
   };
 
   var that = {};

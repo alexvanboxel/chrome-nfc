@@ -10,7 +10,7 @@ var cmdCntx = function (spec) {
   var onError = spec.onError || function (e) {
     console.error(UTIL_fmt("!!! onError !!! Default callback for Command Context, received " + JSON.stringify(e)));
   };
-  var timeout = spec.timeout;
+  var timeout = spec.timeout || 256;
 
   pub.pushHandle = function (handle) {
     stack.push({
@@ -49,7 +49,7 @@ var cmdCntx = function (spec) {
         onSuccess(value);
       }
       catch (e) {
-        console.error(e);
+        onError(e);
       }
     }
     else {

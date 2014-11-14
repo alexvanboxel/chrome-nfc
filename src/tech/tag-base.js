@@ -22,6 +22,9 @@ function tagBase(nfcAdapter,spec,shared) {
 
   that.getId = getId;
   that.getNfcAdapter = getNfcAdapter;
+  that.setOnError = function(cb) {
+    shared.onerror = cb;
+  }
 
   return that;
 }
